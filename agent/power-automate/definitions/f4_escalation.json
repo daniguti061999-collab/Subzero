@@ -1,7 +1,7 @@
-{
+﻿{
   "id": "F4",
   "name": "SZW - F4 Escalation",
-  "description": "Runs every 30 minutes Mon–Fri 6 AM–6 PM ET. Escalates exceptions that have been open beyond their EscalateAfterHours without a recovery plan.",
+  "description": "Runs every 30 minutes Monâ€“Fri 6 AMâ€“6 PM ET. Escalates exceptions that have been open beyond their EscalateAfterHours without a recovery plan.",
   "trigger": {
     "type": "Recurrence",
     "config": {
@@ -20,7 +20,7 @@
       "id": "1",
       "name": "Get_Routing",
       "type": "SharePoint.GetItems",
-      "site": "{{SHAREPOINT_SITE_URL}}",
+      "site": "https://millsproductstn.sharepoint.com",
       "list": "SZW_Routing",
       "top": 100
     },
@@ -28,7 +28,7 @@
       "id": "2",
       "name": "Get_Open_No_Plan",
       "type": "SharePoint.GetItems",
-      "site": "{{SHAREPOINT_SITE_URL}}",
+      "site": "https://millsproductstn.sharepoint.com",
       "list": "SZW_Exceptions",
       "filterQuery": "(Status eq 'New' or Status eq 'Acknowledged') and RecoveryPlan eq null",
       "top": 500
@@ -62,7 +62,7 @@
               "cardBody": {
                 "type": "AdaptiveCard",
                 "body": [
-                  {"type":"TextBlock","text":"⚠️ Escalation: @{items('Apply_Each_Escalation')?['RuleID']} open @{outputs('Compose_HoursOpen')} hours","weight":"Bolder","color":"Attention"},
+                  {"type":"TextBlock","text":"âš ï¸ Escalation: @{items('Apply_Each_Escalation')?['RuleID']} open @{outputs('Compose_HoursOpen')} hours","weight":"Bolder","color":"Attention"},
                   {"type":"FactSet","facts":[
                     {"title":"Part","value":"@{items('Apply_Each_Escalation')?['StockCode']}"},
                     {"title":"PO","value":"@{items('Apply_Each_Escalation')?['CustomerPoNumber']}"},
@@ -112,7 +112,7 @@
               "cardBody": {
                 "type": "AdaptiveCard",
                 "body": [
-                  {"type":"TextBlock","text":"🔴 R5 — @{length(body('Filter_R5')?['body'])} Critical/Past-Due line(s) open > 24 h with no recovery plan","weight":"Bolder","color":"Attention"}
+                  {"type":"TextBlock","text":"ðŸ”´ R5 â€” @{length(body('Filter_R5')?['body'])} Critical/Past-Due line(s) open > 24 h with no recovery plan","weight":"Bolder","color":"Attention"}
                 ]
               }
             }
@@ -123,3 +123,4 @@
   ],
   "connectors": ["Recurrence", "SharePoint", "Teams"]
 }
+

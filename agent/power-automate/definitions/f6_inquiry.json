@@ -1,11 +1,11 @@
-{
+﻿{
   "id": "F6",
   "name": "SZW - F6 Shipment Inquiry Agent",
   "description": "NEW: When an inquiry is submitted to SZW_InquiryQueue, checks FG inventory and the truck schedule in Power BI, posts an approval card to Celia/JC in Teams, and routes the confirmed order to Tonya for SYSPRO entry. Fully read-only on SYSPRO.",
   "trigger": {
     "type": "SharePoint.OnItemCreated",
     "config": {
-      "site": "{{SHAREPOINT_SITE_URL}}",
+      "site": "https://millsproductstn.sharepoint.com",
       "list": "SZW_InquiryQueue"
     }
   },
@@ -20,7 +20,7 @@
       {"name": "Priority", "type": "Choice", "choices": ["Standard","Urgent"], "notes": "Inquiry urgency"},
       {"name": "Notes", "type": "MultilineText", "notes": "Free-text context from requestor"},
       {"name": "Status", "type": "Choice", "choices": ["Pending","Under Review","Confirmed","Cannot Fulfill"], "default": "Pending"},
-      {"name": "RecommendedShipDate", "type": "Date", "notes": "Set by F6 — next truck on or before RequestedDate − 3 days"},
+      {"name": "RecommendedShipDate", "type": "Date", "notes": "Set by F6 â€” next truck on or before RequestedDate âˆ’ 3 days"},
       {"name": "FGAvailable", "type": "Number", "notes": "FG units available, set by F6 from PBI query"},
       {"name": "ConfirmedBy", "type": "Person", "notes": "Celia or JC who tapped Confirm on the adaptive card"},
       {"name": "SYSPROEntered", "type": "Boolean", "notes": "Tonya marks Yes when SO/schedule is keyed in SYSPRO"}
@@ -36,7 +36,7 @@
       "id": "2",
       "name": "Update_Status_UnderReview",
       "type": "SharePoint.UpdateItem",
-      "site": "{{SHAREPOINT_SITE_URL}}",
+      "site": "https://millsproductstn.sharepoint.com",
       "list": "SZW_InquiryQueue",
       "id": "@triggerBody()?['ID']",
       "fields": {
@@ -66,13 +66,13 @@
       "id": "6",
       "name": "Compose_TruckDate",
       "value": "@first(body('Query_FG_Availability')?['results']?[0]?['tables']?[0]?['rows'])?['[NextTruck1]']",
-      "note": "Next scheduled truck date on or before ShipBy — PBI already computes this"
+      "note": "Next scheduled truck date on or before ShipBy â€” PBI already computes this"
     },
     {
       "id": "7",
       "name": "Update_Inquiry_RecommendedDate",
       "type": "SharePoint.UpdateItem",
-      "site": "{{SHAREPOINT_SITE_URL}}",
+      "site": "https://millsproductstn.sharepoint.com",
       "list": "SZW_InquiryQueue",
       "id": "@triggerBody()?['ID']",
       "fields": {
@@ -90,7 +90,7 @@
       "cardBody": {
         "type": "AdaptiveCard",
         "body": [
-          {"type":"TextBlock","text":"📦 Shipment Inquiry #@{triggerBody()?['ID']}","weight":"Bolder","size":"Medium"},
+          {"type":"TextBlock","text":"ðŸ“¦ Shipment Inquiry #@{triggerBody()?['ID']}","weight":"Bolder","size":"Medium"},
           {"type":"TextBlock","text":"Can we fill this order?","spacing":"None"},
           {"type":"FactSet","facts":[
             {"title":"Part","value":"@{triggerBody()?['StockCode']}"},
@@ -103,8 +103,8 @@
           ]}
         ],
         "actions": [
-          {"type":"Action.Submit","title":"✅ Confirm","data":{"action":"confirm"}},
-          {"type":"Action.Submit","title":"❌ Cannot Fulfill","data":{"action":"deny"}}
+          {"type":"Action.Submit","title":"âœ… Confirm","data":{"action":"confirm"}},
+          {"type":"Action.Submit","title":"âŒ Cannot Fulfill","data":{"action":"deny"}}
         ],
         "$schema":"http://adaptivecards.io/schemas/adaptive-card.json",
         "version":"1.4"
@@ -121,7 +121,7 @@
             "name": "Post_Tonya_Task",
             "type": "Teams.PostMessage",
             "recipient": "tsledge@millsproducts.com",
-            "message": "@{concat('**SYSPRO Entry needed** — Inquiry #',triggerBody()?['ID'],'\\n\\n- Part: **',triggerBody()?['StockCode'],'**\\n- Qty: **',triggerBody()?['RequestedQty'],' units**\\n- Ship date: **',outputs('Compose_TruckDate'),'**\\n- Ship to: **',triggerBody()?['CustomerWarehouse'],'**\\n\\nPlease key into SYSPRO SO and mark SYSPROEntered=Yes in SZW_InquiryQueue when done.')}"
+            "message": "@{concat('**SYSPRO Entry needed** â€” Inquiry #',triggerBody()?['ID'],'\\n\\n- Part: **',triggerBody()?['StockCode'],'**\\n- Qty: **',triggerBody()?['RequestedQty'],' units**\\n- Ship date: **',outputs('Compose_TruckDate'),'**\\n- Ship to: **',triggerBody()?['CustomerWarehouse'],'**\\n\\nPlease key into SYSPRO SO and mark SYSPROEntered=Yes in SZW_InquiryQueue when done.')}"
           },
           {
             "name": "Update_Confirmed",
@@ -154,7 +154,7 @@
             "name": "Notify_Requestor_Denied",
             "type": "Office365Outlook.SendEmailV2",
             "to": "@triggerBody()?['RequestorName']?['Email']",
-            "subject": "@{concat('[SZW] Inquiry #',triggerBody()?['ID'],' — Cannot Fulfill')}",
+            "subject": "@{concat('[SZW] Inquiry #',triggerBody()?['ID'],' â€” Cannot Fulfill')}",
             "body": "@{concat('Unfortunately, inquiry #',triggerBody()?['ID'],' for ',triggerBody()?['RequestedQty'],' units of ',triggerBody()?['StockCode'],' cannot be fulfilled. FG available: ',first(body('Query_FG_Availability')?['results']?[0]?['tables']?[0]?['rows'])?['[FGAvail]'],' units (short by ',first(body('Query_FG_Availability')?['results']?[0]?['tables']?[0]?['rows'])?['[ShortQty]'],').<br>Contact Celia Nixon or Juan Zacarias to adjust the plan.')}"
           }
         ]
@@ -186,8 +186,9 @@
   "connectors": ["SharePoint", "PowerBI", "Teams", "Office365Outlook"],
   "sharePointLists": ["SZW_InquiryQueue", "SZW_RunLog"],
   "constraints": [
-    "Read-only on SYSPRO — Tonya manually keys SO/schedule",
-    "Standard connectors only — no premium plan required",
+    "Read-only on SYSPRO â€” Tonya manually keys SO/schedule",
+    "Standard connectors only â€” no premium plan required",
     "Teams adaptive card approval uses Flow Bot channel; Celia and JC must have Teams access"
   ]
 }
+

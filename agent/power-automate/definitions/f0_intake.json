@@ -1,4 +1,4 @@
-{
+﻿{
   "id": "F0",
   "name": "SZW - F0 PO Intake",
   "description": "Receives the Sub-Zero open-PO email, saves the attachment to SharePoint, triggers a Power BI refresh, and posts confirmation to Teams.",
@@ -31,7 +31,7 @@
       "id": "3",
       "name": "Get_Recent_Uploads",
       "type": "SharePoint.GetItems",
-      "site": "{{SHAREPOINT_SITE_URL}}",
+      "site": "https://millsproductstn.sharepoint.com",
       "library": "Shared Documents",
       "folder": "SZW_Agent/Incoming/SubZeroOpenPO",
       "filterQuery": "Created ge '@{addMinutes(utcNow(),-30)}'"
@@ -45,7 +45,7 @@
         {
           "name": "Create_File",
           "type": "SharePoint.CreateFile",
-          "site": "{{SHAREPOINT_SITE_URL}}",
+          "site": "https://millsproductstn.sharepoint.com",
           "library": "Shared Documents",
           "folderPath": "SZW_Agent/Incoming/SubZeroOpenPO",
           "fileName": "@{concat('SubZeroOpenPO_', formatDateTime(convertFromUtc(triggerOutputs()?['body/receivedDateTime'],'Eastern Standard Time'),'yyyy-MM-dd_HHmm'),'_',items()?['name'])}",
@@ -67,13 +67,13 @@
           "note": "SZW Backlog Monitor dataset in AthensDistribution workspace"
         }
       ],
-      "no": ["skip — refresh already running from an earlier email this window"]
+      "no": ["skip â€” refresh already running from an earlier email this window"]
     },
     {
       "id": "6",
       "name": "Create_RunLog_Item",
       "type": "SharePoint.CreateItem",
-      "site": "{{SHAREPOINT_SITE_URL}}",
+      "site": "https://millsproductstn.sharepoint.com",
       "list": "SZW_RunLog",
       "fields": {
         "Title": "@{concat('F0-',formatDateTime(utcNow(),'yyyyMMdd-HHmm'))}",
@@ -89,7 +89,7 @@
       "name": "Post_Teams_Confirmation",
       "type": "Teams.PostMessage",
       "channelId": "{{TEAMS_CHANNEL_SZW_ALERTS}}",
-      "message": "@{concat('📦 Sub-Zero open PO list received ', formatDateTime(convertFromUtc(triggerOutputs()?['body/receivedDateTime'],'Eastern Standard Time'),'ddd MMM d h:mm tt'), ' from ', triggerOutputs()?['body/from'], '. Backlog refresh started.')}"
+      "message": "@{concat('ðŸ“¦ Sub-Zero open PO list received ', formatDateTime(convertFromUtc(triggerOutputs()?['body/receivedDateTime'],'Eastern Standard Time'),'ddd MMM d h:mm tt'), ' from ', triggerOutputs()?['body/from'], '. Backlog refresh started.')}"
     }
   ],
   "errorHandling": {
@@ -111,3 +111,4 @@
   "sharePointLists": ["SZW_RunLog"],
   "sharePointLibraries": ["SZW_Agent/Incoming/SubZeroOpenPO"]
 }
+

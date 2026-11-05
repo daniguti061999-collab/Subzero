@@ -1,7 +1,7 @@
-{
+﻿{
   "id": "F2",
   "name": "SZW - F2 Monitor",
-  "description": "Runs every hour Mon–Fri 6 AM–6 PM ET. Queries PBI for exceptions, compares against SharePoint, posts Teams alerts for new/worsened lines, auto-clears resolved ones.",
+  "description": "Runs every hour Monâ€“Fri 6 AMâ€“6 PM ET. Queries PBI for exceptions, compares against SharePoint, posts Teams alerts for new/worsened lines, auto-clears resolved ones.",
   "trigger": {
     "type": "Recurrence",
     "config": {
@@ -30,7 +30,7 @@
       "type": "Control.Condition",
       "condition": "@greater(div(sub(ticks(utcNow()),ticks(body('Query_RunInfo')?['results']?[0]?['tables']?[0]?['rows']?[0]?['[RefreshedAt]'])),600000000),90)",
       "yes": [
-        "Post D1 Teams card: 'PBI data is stale — last refresh was @{...} ago. F2 monitor skipped this run.'",
+        "Post D1 Teams card: 'PBI data is stale â€” last refresh was @{...} ago. F2 monitor skipped this run.'",
         "Create SZW_RunLog item (Status=Stale)",
         "Terminate (Succeeded)"
       ],
@@ -48,7 +48,7 @@
       "id": "4",
       "name": "Get_Open_Exceptions",
       "type": "SharePoint.GetItems",
-      "site": "{{SHAREPOINT_SITE_URL}}",
+      "site": "https://millsproductstn.sharepoint.com",
       "list": "SZW_Exceptions",
       "filterQuery": "Status ne 'Resolved' and Status ne 'Auto-cleared'",
       "top": 5000
@@ -57,7 +57,7 @@
       "id": "5",
       "name": "Get_Routing",
       "type": "SharePoint.GetItems",
-      "site": "{{SHAREPOINT_SITE_URL}}",
+      "site": "https://millsproductstn.sharepoint.com",
       "list": "SZW_Routing",
       "top": 100
     },
@@ -125,7 +125,7 @@
               "cardBody": {
                 "type": "AdaptiveCard",
                 "body": [
-                  {"type":"TextBlock","text":"🚨 New Exception: @{item()?['[RuleID]']}","weight":"Bolder"},
+                  {"type":"TextBlock","text":"ðŸš¨ New Exception: @{item()?['[RuleID]']}","weight":"Bolder"},
                   {"type":"FactSet","facts":[
                     {"title":"Part","value":"@{item()?['[StockCode]']}"},
                     {"title":"PO","value":"@{item()?['[CustomerPoNumber]']}"},
@@ -217,3 +217,4 @@
   },
   "connectors": ["Recurrence", "PowerBI", "SharePoint", "Teams"]
 }
+

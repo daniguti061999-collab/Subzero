@@ -1,4 +1,4 @@
-{
+﻿{
   "id": "F5",
   "name": "SZW - F5 Watchdog",
   "description": "Runs every 2 hours 24/7. Monitors F2 health and data freshness. Emails Daniel if F2 missed a run, PBI data is stale, or two consecutive F2 runs errored. Also checks whether the Sub-Zero open PO file is overdue.",
@@ -14,7 +14,7 @@
       "id": "1",
       "name": "Get_Config",
       "type": "SharePoint.GetItems",
-      "site": "{{SHAREPOINT_SITE_URL}}",
+      "site": "https://millsproductstn.sharepoint.com",
       "list": "SZW_Config",
       "filterQuery": "Key eq 'OpenPOMaxAgeHours' or Key eq 'BusinessHoursStart' or Key eq 'BusinessHoursEnd'",
       "top": 10
@@ -23,7 +23,7 @@
       "id": "2",
       "name": "Get_Recent_F2_Runs",
       "type": "SharePoint.GetItems",
-      "site": "{{SHAREPOINT_SITE_URL}}",
+      "site": "https://millsproductstn.sharepoint.com",
       "list": "SZW_RunLog",
       "filterQuery": "Flow eq 'F2'",
       "orderBy": "StartedAt desc",
@@ -97,7 +97,7 @@
       "id": "7",
       "name": "Get_Latest_OpenPO_File",
       "type": "SharePoint.GetFiles",
-      "site": "{{SHAREPOINT_SITE_URL}}",
+      "site": "https://millsproductstn.sharepoint.com",
       "library": "Shared Documents",
       "folder": "SZW_Agent/Incoming/SubZeroOpenPO",
       "orderBy": "TimeLastModified desc",
@@ -121,3 +121,4 @@
   ],
   "connectors": ["Recurrence", "SharePoint", "PowerBI", "Office365Outlook"]
 }
+
