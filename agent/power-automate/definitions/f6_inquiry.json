@@ -85,7 +85,7 @@
       "name": "Post_Approval_Card_And_Wait",
       "type": "Teams.PostAdaptiveCardAndWaitForResponse",
       "recipient": "cnixon@millsproducts.com;jzacarias@millsproducts.com",
-      "channelId": "{{TEAMS_CHANNEL_SZW_PLANNING}}",
+      "channelId": "19:0a675dc72b7b40968630c1f3e2534b3f@thread.tacv2",
       "timeout": "PT4H",
       "cardBody": {
         "type": "AdaptiveCard",
@@ -191,4 +191,5 @@
     "Teams adaptive card approval uses Flow Bot channel; Celia and JC must have Teams access"
   ]
 }
+
 

@@ -120,7 +120,7 @@
             {
               "name": "Post_Teams_Alert_New",
               "type": "Teams.PostAdaptiveCard",
-              "channelId": "{{TEAMS_CHANNEL_SZW_ALERTS}}",
+              "channelId": "19:0a675dc72b7b40968630c1f3e2534b3f@thread.tacv2",
               "note": "Route to NotifyEmails from SZW_Routing matching item()?['[RuleID]']",
               "cardBody": {
                 "type": "AdaptiveCard",
@@ -217,4 +217,5 @@
   },
   "connectors": ["Recurrence", "PowerBI", "SharePoint", "Teams"]
 }
+
 

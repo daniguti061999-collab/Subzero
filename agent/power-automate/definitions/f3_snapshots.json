@@ -123,10 +123,11 @@
       "id": "11",
       "name": "Post_Teams_Daily_Summary",
       "type": "Teams.PostMessage",
-      "channelId": "{{TEAMS_CHANNEL_SZW_ALERTS}}",
+      "channelId": "19:0a675dc72b7b40968630c1f3e2534b3f@thread.tacv2",
       "message": "@{concat('ðŸ“Š Daily summary: Past Due ',body('Query_KPIs')?['results']?[0]?['tables']?[0]?['rows']?[0]?['[PastDueQty]'],' Â· Critical ',body('Query_KPIs')?['results']?[0]?['tables']?[0]?['rows']?[0]?['[CriticalQty]'],' Â· OTD ',body('Query_KPIs')?['results']?[0]?['tables']?[0]?['rows']?[0]?['[OTDPct]'],'%')}"
     }
   ],
   "connectors": ["Recurrence", "PowerBI", "SharePoint", "Office365Outlook", "Teams"]
 }
+
 

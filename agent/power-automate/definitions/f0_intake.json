@@ -88,7 +88,7 @@
       "id": "7",
       "name": "Post_Teams_Confirmation",
       "type": "Teams.PostMessage",
-      "channelId": "{{TEAMS_CHANNEL_SZW_ALERTS}}",
+      "channelId": "19:0a675dc72b7b40968630c1f3e2534b3f@thread.tacv2",
       "message": "@{concat('ðŸ“¦ Sub-Zero open PO list received ', formatDateTime(convertFromUtc(triggerOutputs()?['body/receivedDateTime'],'Eastern Standard Time'),'ddd MMM d h:mm tt'), ' from ', triggerOutputs()?['body/from'], '. Backlog refresh started.')}"
     }
   ],
@@ -111,4 +111,5 @@
   "sharePointLists": ["SZW_RunLog"],
   "sharePointLibraries": ["SZW_Agent/Incoming/SubZeroOpenPO"]
 }
+
 
