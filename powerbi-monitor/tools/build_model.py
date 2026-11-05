@@ -148,7 +148,13 @@ calc["AgingBucket"] = '''
         "15+ days" )
 '''
 calc["AgingOrder"] = '''
-    SWITCH ( Requirements[AgingBucket], "1-2 days", 1, "3-7 days", 2, "8-14 days", 3, "15+ days", 4, 0 )
+    // Replicates AgingBucket logic to avoid sortByColumn circular dependency
+    SWITCH ( TRUE (),
+        Requirements[DaysPastDue] = 0, 0,
+        Requirements[DaysPastDue] <= 2, 1,
+        Requirements[DaysPastDue] <= 7, 2,
+        Requirements[DaysPastDue] <= 14, 3,
+        4 )
 '''
 calc["Status"] = f'''
     VAR asof = {ASOF}
@@ -162,8 +168,18 @@ calc["Status"] = f'''
             Requirements[ShortQty] > 0 && s <= Requirements[NextTruck2], "At Risk",
             "On Track" )
 '''
-calc["StatusOrder"] = '''
-    SWITCH ( Requirements[Status], "Past Due", 1, "Critical", 2, "At Risk", 3, "Data Issue", 4, "On Track", 5, 6 )
+calc["StatusOrder"] = f'''
+    // Replicates Status logic to avoid sortByColumn circular dependency
+    VAR asof = {ASOF}
+    VAR s = Requirements[ReqShipDate]
+    RETURN
+        SWITCH ( TRUE (),
+            Requirements[OpenQty] <= 0, 6,
+            ISBLANK ( s ), 4,
+            s < asof, 1,
+            Requirements[ShortQty] > 0 && s <= Requirements[NextTruck1], 2,
+            Requirements[ShortQty] > 0 && s <= Requirements[NextTruck2], 3,
+            5 )
 '''
 calc["TruckWindow"] = f'''
     VAR asof = {ASOF}
