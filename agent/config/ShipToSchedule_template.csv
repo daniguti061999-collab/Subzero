@@ -1,0 +1,4 @@
+ShipToKey,ShipToName,TruckWeekday,TransitCalendarDays,DateBasis,LoadDaysBefore,Active
+WHS-22,Sub-Zero Whs 22 (Tue truck),2,3,D,0,1
+WHS-23,Sub-Zero Whs 23 (Tue truck),2,3,D,0,1
+WHS-10,Sub-Zero Whs 10 (loaded Thu ships Fri),5,3,D,1,1

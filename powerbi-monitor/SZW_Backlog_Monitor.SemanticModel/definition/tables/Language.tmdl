@@ -1,0 +1,20 @@
+table Language
+
+	column Code
+		dataType: string
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: [Code]
+		sortByColumn: Order
+
+	column Order
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: [Order]
+
+	partition Language = calculated
+		mode: import
+		source =
+				DATATABLE ( "Code", STRING, "Order", INTEGER, { { "EN", 1 }, { "ES", 2 } } )

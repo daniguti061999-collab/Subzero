@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.pyc
+# Real customer data — keep out of any shared remote
+agent/data_real_*/
+agent/source_files/
+powerbi-monitor/Data/
+# Power BI Desktop local files
+**/.pbi/localSettings.json
+**/.pbi/cache.abf
+# Schema cache used by tools/validate.py
+powerbi-monitor/tools/cache/

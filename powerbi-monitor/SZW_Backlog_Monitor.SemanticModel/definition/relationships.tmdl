@@ -1,0 +1,16 @@
+relationship rel_Requirements_ShipToKey
+	fromColumn: Requirements.ShipToKey
+	toColumn: ShipToSchedule.ShipToKey
+
+relationship rel_Exceptions_ShipTo
+	fromColumn: Exceptions.ShipTo
+	toColumn: ShipToSchedule.ShipToKey
+
+relationship rel_Requirements_StockCode
+	fromColumn: Requirements.StockCode
+	toColumn: Parts.StockCode
+
+relationship rel_Exceptions_Part
+	fromColumn: Exceptions.Part
+	toColumn: Parts.StockCode
+

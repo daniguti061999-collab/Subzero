@@ -1,0 +1,24 @@
+table RunInfo
+
+	column AsOfDate
+		dataType: dateTime
+		formatString: yyyy-mm-dd
+		summarizeBy: none
+		sourceColumn: AsOfDate
+
+	column RefreshedAt
+		dataType: dateTime
+		formatString: yyyy-mm-dd hh:nn
+		summarizeBy: none
+		sourceColumn: RefreshedAt
+
+	partition RunInfo = m
+		mode: import
+		source =
+				let
+				    // Plant time (Eastern, standard offset). Set AsOfOverride (yyyy-mm-dd) to replay a past day.
+				    NowET = DateTimeZone.SwitchZone(DateTimeZone.UtcNow(), -5),
+				    AsOf = if AsOfOverride <> null and Text.Trim(AsOfOverride) <> "" then Date.FromText(Text.Trim(AsOfOverride)) else Date.From(NowET),
+				    Result = #table(type table [AsOfDate = date, RefreshedAt = datetime], {{AsOf, DateTime.From(NowET)}})
+				in
+				    Result

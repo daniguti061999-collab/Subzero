@@ -1,0 +1,32 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/report/3.0.0/schema.json",
+  "themeCollection": {
+    "customTheme": {
+      "name": "MillsTheme.json",
+      "reportVersionAtImport": {
+        "visual": "2.4.0",
+        "report": "3.0.0",
+        "page": "2.0.0"
+      },
+      "type": "RegisteredResources"
+    }
+  },
+  "resourcePackages": [
+    {
+      "name": "RegisteredResources",
+      "type": "RegisteredResources",
+      "items": [
+        {
+          "name": "MillsTheme.json",
+          "path": "MillsTheme.json",
+          "type": "CustomTheme"
+        },
+        {
+          "name": "MillsLogo.png",
+          "path": "MillsLogo.png",
+          "type": "Image"
+        }
+      ]
+    }
+  ]
+}

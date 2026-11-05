@@ -1,0 +1,579 @@
+[
+  {
+    "ExceptionKey": "R2|074140|1|2026-10-29",
+    "RuleID": "R2",
+    "Severity": "Critical",
+    "Reason": "New",
+    "To": [
+      "cnixon@millsproducts.com",
+      "jzacarias@millsproducts.com",
+      "twilcox@millsproducts.com"
+    ],
+    "Message": "[CRITICAL] Part SZ-2002 - projected 200-unit shortage for the 2026-10-29 Thu truck (500 required, 300 FG on hand for all open lines). Review production recovery options and record a recovery plan.",
+    "Card": {
+      "type": "AdaptiveCard",
+      "version": "1.4",
+      "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+      "body": [
+        {
+          "type": "TextBlock",
+          "text": "CRITICAL - R2 - SZ-2002",
+          "weight": "Bolder",
+          "color": "Attention",
+          "size": "Medium"
+        },
+        {
+          "type": "TextBlock",
+          "text": "[CRITICAL] Part SZ-2002 - projected 200-unit shortage for the 2026-10-29 Thu truck (500 required, 300 FG on hand for all open lines). Review production recovery options and record a recovery plan.",
+          "wrap": true
+        },
+        {
+          "type": "FactSet",
+          "facts": [
+            {
+              "title": "SO line",
+              "value": "074140|1"
+            },
+            {
+              "title": "Ship date / truck",
+              "value": "2026-10-29 Thu truck"
+            },
+            {
+              "title": "Open qty",
+              "value": "500"
+            },
+            {
+              "title": "Short qty",
+              "value": "200"
+            }
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "type": "Action.OpenUrl",
+          "title": "Open exception",
+          "url": "{{ExceptionItemUrl}}"
+        },
+        {
+          "type": "Action.OpenUrl",
+          "title": "View in Power BI",
+          "url": "{{ReportUrl}}"
+        }
+      ]
+    }
+  },
+  {
+    "ExceptionKey": "R1|074133|2|2026-11-03",
+    "RuleID": "R1",
+    "Severity": "Warning",
+    "Reason": "New",
+    "To": [
+      "cnixon@millsproducts.com",
+      "jzacarias@millsproducts.com"
+    ],
+    "Message": "[WARNING] Part SZ-2002 - projected 1,000-unit shortage for the 2026-11-03 Tue truck.",
+    "Card": {
+      "type": "AdaptiveCard",
+      "version": "1.4",
+      "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+      "body": [
+        {
+          "type": "TextBlock",
+          "text": "WARNING - R1 - SZ-2002",
+          "weight": "Bolder",
+          "color": "Warning",
+          "size": "Medium"
+        },
+        {
+          "type": "TextBlock",
+          "text": "[WARNING] Part SZ-2002 - projected 1,000-unit shortage for the 2026-11-03 Tue truck.",
+          "wrap": true
+        },
+        {
+          "type": "FactSet",
+          "facts": [
+            {
+              "title": "SO line",
+              "value": "074133|2"
+            },
+            {
+              "title": "Ship date / truck",
+              "value": "2026-11-03 Tue truck"
+            },
+            {
+              "title": "Open qty",
+              "value": "1,000"
+            },
+            {
+              "title": "Short qty",
+              "value": "1,000"
+            }
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "type": "Action.OpenUrl",
+          "title": "Open exception",
+          "url": "{{ExceptionItemUrl}}"
+        },
+        {
+          "type": "Action.OpenUrl",
+          "title": "View in Power BI",
+          "url": "{{ReportUrl}}"
+        }
+      ]
+    }
+  },
+  {
+    "ExceptionKey": "D1|074160|1|2026-11-20",
+    "RuleID": "D1",
+    "Severity": "System",
+    "Reason": "New",
+    "To": [
+      "dgutierrez@millsproducts.com"
+    ],
+    "Message": "[SYSTEM] SZ-7700 074160|1: No truck schedule for ship-to",
+    "Card": {
+      "type": "AdaptiveCard",
+      "version": "1.4",
+      "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+      "body": [
+        {
+          "type": "TextBlock",
+          "text": "SYSTEM - D1 - SZ-7700",
+          "weight": "Bolder",
+          "color": "Default",
+          "size": "Medium"
+        },
+        {
+          "type": "TextBlock",
+          "text": "[SYSTEM] SZ-7700 074160|1: No truck schedule for ship-to",
+          "wrap": true
+        },
+        {
+          "type": "FactSet",
+          "facts": [
+            {
+              "title": "SO line",
+              "value": "074160|1"
+            },
+            {
+              "title": "Ship date / truck",
+              "value": "2026-11-20"
+            },
+            {
+              "title": "Open qty",
+              "value": "100"
+            },
+            {
+              "title": "Short qty",
+              "value": "0"
+            }
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "type": "Action.OpenUrl",
+          "title": "Open exception",
+          "url": "{{ExceptionItemUrl}}"
+        },
+        {
+          "type": "Action.OpenUrl",
+          "title": "View in Power BI",
+          "url": "{{ReportUrl}}"
+        }
+      ]
+    }
+  },
+  {
+    "ExceptionKey": "R3|074098|1|2026-10-22",
+    "RuleID": "R3",
+    "Severity": "Critical",
+    "Reason": "New",
+    "To": [
+      "bjhonson@millsproducts.com",
+      "cnixon@millsproducts.com",
+      "jzacarias@millsproducts.com",
+      "twilcox@millsproducts.com"
+    ],
+    "Message": "[CRITICAL] Part WF-3150 - SO line 074098|1 missed the 2026-10-22 Thu truck with 300 units open (5 day(s) past due). FG available now: 0. Review inventory, production completion dates and recovery shipment options.",
+    "Card": {
+      "type": "AdaptiveCard",
+      "version": "1.4",
+      "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+      "body": [
+        {
+          "type": "TextBlock",
+          "text": "CRITICAL - R3 - WF-3150",
+          "weight": "Bolder",
+          "color": "Attention",
+          "size": "Medium"
+        },
+        {
+          "type": "TextBlock",
+          "text": "[CRITICAL] Part WF-3150 - SO line 074098|1 missed the 2026-10-22 Thu truck with 300 units open (5 day(s) past due). FG available now: 0. Review inventory, production completion dates and recovery shipment options.",
+          "wrap": true
+        },
+        {
+          "type": "FactSet",
+          "facts": [
+            {
+              "title": "SO line",
+              "value": "074098|1"
+            },
+            {
+              "title": "Ship date / truck",
+              "value": "2026-10-22 Thu truck"
+            },
+            {
+              "title": "Open qty",
+              "value": "300"
+            },
+            {
+              "title": "Short qty",
+              "value": "300"
+            }
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "type": "Action.OpenUrl",
+          "title": "Open exception",
+          "url": "{{ExceptionItemUrl}}"
+        },
+        {
+          "type": "Action.OpenUrl",
+          "title": "View in Power BI",
+          "url": "{{ReportUrl}}"
+        }
+      ]
+    }
+  },
+  {
+    "ExceptionKey": "D1|079999|1|2026-10-23",
+    "RuleID": "D1",
+    "Severity": "System",
+    "Reason": "New",
+    "To": [
+      "dgutierrez@millsproducts.com"
+    ],
+    "Message": "[SYSTEM] SZ-1001 079999|1: Unmatched shipment INV-90031 qty 25",
+    "Card": {
+      "type": "AdaptiveCard",
+      "version": "1.4",
+      "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+      "body": [
+        {
+          "type": "TextBlock",
+          "text": "SYSTEM - D1 - SZ-1001",
+          "weight": "Bolder",
+          "color": "Default",
+          "size": "Medium"
+        },
+        {
+          "type": "TextBlock",
+          "text": "[SYSTEM] SZ-1001 079999|1: Unmatched shipment INV-90031 qty 25",
+          "wrap": true
+        },
+        {
+          "type": "FactSet",
+          "facts": [
+            {
+              "title": "SO line",
+              "value": "079999|1"
+            },
+            {
+              "title": "Ship date / truck",
+              "value": "2026-10-23"
+            },
+            {
+              "title": "Open qty",
+              "value": "0"
+            },
+            {
+              "title": "Short qty",
+              "value": "0"
+            }
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "type": "Action.OpenUrl",
+          "title": "Open exception",
+          "url": "{{ExceptionItemUrl}}"
+        },
+        {
+          "type": "Action.OpenUrl",
+          "title": "View in Power BI",
+          "url": "{{ReportUrl}}"
+        }
+      ]
+    }
+  },
+  {
+    "ExceptionKey": "R4|Sub-Zero/Wolf|2026-10-27",
+    "RuleID": "R4",
+    "Severity": "Warning",
+    "Reason": "New",
+    "To": [
+      "rrandolph@millsproducts.com",
+      "rpadron@millsproducts.com"
+    ],
+    "Message": "[WARNING] Sub-Zero/Wolf past-due backlog grew. Past due 380 vs 300 (+27%). Top: WF-3150 (+80).",
+    "Card": {
+      "type": "AdaptiveCard",
+      "version": "1.4",
+      "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+      "body": [
+        {
+          "type": "TextBlock",
+          "text": "WARNING - R4 - Sub-Zero/Wolf",
+          "weight": "Bolder",
+          "color": "Warning",
+          "size": "Medium"
+        },
+        {
+          "type": "TextBlock",
+          "text": "[WARNING] Sub-Zero/Wolf past-due backlog grew. Past due 380 vs 300 (+27%). Top: WF-3150 (+80).",
+          "wrap": true
+        },
+        {
+          "type": "FactSet",
+          "facts": [
+            {
+              "title": "SO line",
+              "value": "Sub-Zero/Wolf"
+            },
+            {
+              "title": "Ship date / truck",
+              "value": "2026-10-27"
+            },
+            {
+              "title": "Open qty",
+              "value": "380"
+            },
+            {
+              "title": "Short qty",
+              "value": "0"
+            }
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "type": "Action.OpenUrl",
+          "title": "Open exception",
+          "url": "{{ExceptionItemUrl}}"
+        },
+        {
+          "type": "Action.OpenUrl",
+          "title": "View in Power BI",
+          "url": "{{ReportUrl}}"
+        }
+      ]
+    }
+  },
+  {
+    "ExceptionKey": "R7|074140|1|2026-10-29",
+    "RuleID": "R7",
+    "Severity": "Warning",
+    "Reason": "New",
+    "To": [
+      "cnixon@millsproducts.com",
+      "jzacarias@millsproducts.com",
+      "rrandolph@millsproducts.com",
+      "rpadron@millsproducts.com",
+      "tsledge@millsproducts.com"
+    ],
+    "Message": "[WARNING] Demand change on SZ-2002 (SO line 074140|1): date pulled in 2026-11-09 -> 2026-11-02.",
+    "Card": {
+      "type": "AdaptiveCard",
+      "version": "1.4",
+      "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+      "body": [
+        {
+          "type": "TextBlock",
+          "text": "WARNING - R7 - SZ-2002",
+          "weight": "Bolder",
+          "color": "Warning",
+          "size": "Medium"
+        },
+        {
+          "type": "TextBlock",
+          "text": "[WARNING] Demand change on SZ-2002 (SO line 074140|1): date pulled in 2026-11-09 -> 2026-11-02.",
+          "wrap": true
+        },
+        {
+          "type": "FactSet",
+          "facts": [
+            {
+              "title": "SO line",
+              "value": "074140|1"
+            },
+            {
+              "title": "Ship date / truck",
+              "value": "2026-10-29 Thu truck"
+            },
+            {
+              "title": "Open qty",
+              "value": "500"
+            },
+            {
+              "title": "Short qty",
+              "value": "200"
+            }
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "type": "Action.OpenUrl",
+          "title": "Open exception",
+          "url": "{{ExceptionItemUrl}}"
+        },
+        {
+          "type": "Action.OpenUrl",
+          "title": "View in Power BI",
+          "url": "{{ReportUrl}}"
+        }
+      ]
+    }
+  },
+  {
+    "ExceptionKey": "R7|074133|2|2026-11-03",
+    "RuleID": "R7",
+    "Severity": "Warning",
+    "Reason": "New",
+    "To": [
+      "cnixon@millsproducts.com",
+      "jzacarias@millsproducts.com",
+      "rrandolph@millsproducts.com",
+      "rpadron@millsproducts.com",
+      "tsledge@millsproducts.com"
+    ],
+    "Message": "[WARNING] Demand change on SZ-2002 (SO line 074133|2): qty 800 -> 1,000 (+25%).",
+    "Card": {
+      "type": "AdaptiveCard",
+      "version": "1.4",
+      "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+      "body": [
+        {
+          "type": "TextBlock",
+          "text": "WARNING - R7 - SZ-2002",
+          "weight": "Bolder",
+          "color": "Warning",
+          "size": "Medium"
+        },
+        {
+          "type": "TextBlock",
+          "text": "[WARNING] Demand change on SZ-2002 (SO line 074133|2): qty 800 -> 1,000 (+25%).",
+          "wrap": true
+        },
+        {
+          "type": "FactSet",
+          "facts": [
+            {
+              "title": "SO line",
+              "value": "074133|2"
+            },
+            {
+              "title": "Ship date / truck",
+              "value": "2026-11-03 Tue truck"
+            },
+            {
+              "title": "Open qty",
+              "value": "1,000"
+            },
+            {
+              "title": "Short qty",
+              "value": "1,000"
+            }
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "type": "Action.OpenUrl",
+          "title": "Open exception",
+          "url": "{{ExceptionItemUrl}}"
+        },
+        {
+          "type": "Action.OpenUrl",
+          "title": "View in Power BI",
+          "url": "{{ReportUrl}}"
+        }
+      ]
+    }
+  },
+  {
+    "ExceptionKey": "R7|074098|1|2026-10-22",
+    "RuleID": "R7",
+    "Severity": "Warning",
+    "Reason": "New",
+    "To": [
+      "cnixon@millsproducts.com",
+      "jzacarias@millsproducts.com",
+      "rrandolph@millsproducts.com",
+      "rpadron@millsproducts.com",
+      "tsledge@millsproducts.com"
+    ],
+    "Message": "[WARNING] Demand change on WF-3150 (SO line 074098|1): qty 220 -> 300 (+36%).",
+    "Card": {
+      "type": "AdaptiveCard",
+      "version": "1.4",
+      "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+      "body": [
+        {
+          "type": "TextBlock",
+          "text": "WARNING - R7 - WF-3150",
+          "weight": "Bolder",
+          "color": "Warning",
+          "size": "Medium"
+        },
+        {
+          "type": "TextBlock",
+          "text": "[WARNING] Demand change on WF-3150 (SO line 074098|1): qty 220 -> 300 (+36%).",
+          "wrap": true
+        },
+        {
+          "type": "FactSet",
+          "facts": [
+            {
+              "title": "SO line",
+              "value": "074098|1"
+            },
+            {
+              "title": "Ship date / truck",
+              "value": "2026-10-22 Thu truck"
+            },
+            {
+              "title": "Open qty",
+              "value": "300"
+            },
+            {
+              "title": "Short qty",
+              "value": "300"
+            }
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "type": "Action.OpenUrl",
+          "title": "Open exception",
+          "url": "{{ExceptionItemUrl}}"
+        },
+        {
+          "type": "Action.OpenUrl",
+          "title": "View in Power BI",
+          "url": "{{ReportUrl}}"
+        }
+      ]
+    }
+  }
+]

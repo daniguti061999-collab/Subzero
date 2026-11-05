@@ -1,0 +1,247 @@
+// =====================================================================
+// Mills Products — Variación semanal de inventario
+// 02_Medidas_WoW.dax
+// Cómo usarlo: abre la vista de consultas DAX del modelo semántico, pega todo
+// el script y da clic en "Actualizar modelo con los cambios" (aparece arriba de DEFINE).
+// Antes: crea las tablas Week Selector, Language y Translations (01_Tablas_calculadas.dax).
+//
+// Supuesto de nombres (reemplazar con Buscar/Reemplazar si difieren — guía, sección 2):
+//   InventorySnapshot[SnapshotDate]  fecha del snapshot semanal
+//   InventorySnapshot[Warehouse]     almacén
+//   InventorySnapshot[StockCode]     código de material
+//   InventorySnapshot[QtyOnHand]     cantidad en el snapshot
+//   InventorySnapshot[ExtendedCost]  costo total de la línea (Qty x costo unitario)
+// =====================================================================
+
+DEFINE
+
+    // ---------- Base ----------
+    MEASURE InventorySnapshot[Inv Value] =
+        SUM ( InventorySnapshot[ExtendedCost] )
+        // Si no existe ExtendedCost:
+        // SUMX ( InventorySnapshot, InventorySnapshot[QtyOnHand] * InventorySnapshot[UnitCost] )
+
+    MEASURE InventorySnapshot[Inv Qty] =
+        SUM ( InventorySnapshot[QtyOnHand] )
+
+    // ---------- Semanas ----------
+    // Semana elegida en el slicer (tabla desconectada). Sin selección = última semana.
+    MEASURE InventorySnapshot[WoW Selected Week] =
+        MAX ( 'Week Selector'[SnapshotDate] )
+
+    // Snapshot anterior real (no "-7 días"): aguanta semanas sin carga.
+    MEASURE InventorySnapshot[WoW Prior Week] =
+        VAR wk = [WoW Selected Week]
+        RETURN
+            CALCULATE (
+                MAX ( InventorySnapshot[SnapshotDate] ),
+                REMOVEFILTERS ( InventorySnapshot ),
+                InventorySnapshot[SnapshotDate] < wk
+            )
+
+    // ---------- Valores y cantidades ----------
+    MEASURE InventorySnapshot[WoW Value CW] =
+        VAR wk = [WoW Selected Week]
+        RETURN CALCULATE ( [Inv Value], InventorySnapshot[SnapshotDate] = wk )
+
+    MEASURE InventorySnapshot[WoW Value PW] =
+        VAR pw = [WoW Prior Week]
+        RETURN CALCULATE ( [Inv Value], InventorySnapshot[SnapshotDate] = pw )
+
+    MEASURE InventorySnapshot[WoW Qty CW] =
+        VAR wk = [WoW Selected Week]
+        RETURN CALCULATE ( [Inv Qty], InventorySnapshot[SnapshotDate] = wk )
+
+    MEASURE InventorySnapshot[WoW Qty PW] =
+        VAR pw = [WoW Prior Week]
+        RETURN CALCULATE ( [Inv Qty], InventorySnapshot[SnapshotDate] = pw )
+
+    MEASURE InventorySnapshot[WoW Delta] =
+        [WoW Value CW] - [WoW Value PW]
+
+    MEASURE InventorySnapshot[WoW Delta %] =
+        DIVIDE ( [WoW Delta], [WoW Value PW] )
+
+    MEASURE InventorySnapshot[WoW Abs Delta] =
+        ABS ( [WoW Delta] )
+
+    MEASURE InventorySnapshot[WoW Unit Cost CW] =
+        DIVIDE ( [WoW Value CW], [WoW Qty CW] )
+
+    MEASURE InventorySnapshot[WoW Unit Cost PW] =
+        DIVIDE ( [WoW Value PW], [WoW Qty PW] )
+
+    // ---------- Efecto cantidad vs. efecto costo ----------
+    // Se calcula a nivel Warehouse x StockCode y luego se suma, para que cualquier
+    // nivel (Site, GroupedWH, total) cuadre: Efecto cantidad + Efecto costo + Otros = Variación.
+    //   Efecto cantidad = (Q actual - Q anterior) x costo unitario anterior
+    //   Efecto costo    = (costo unitario actual - anterior) x Q actual
+    //   Material nuevo     -> todo es efecto cantidad
+    //   Material eliminado -> todo es efecto cantidad (negativo)
+    MEASURE InventorySnapshot[WoW Qty Effect] =
+        VAR wk = [WoW Selected Week]
+        VAR pw = [WoW Prior Week]
+        VAR items =
+            CALCULATETABLE (
+                SUMMARIZE ( InventorySnapshot, InventorySnapshot[Warehouse], InventorySnapshot[StockCode] ),
+                InventorySnapshot[SnapshotDate] IN { wk, pw }
+            )
+        RETURN
+            SUMX (
+                items,
+                VAR q1 = [WoW Qty CW]
+                VAR q0 = [WoW Qty PW]
+                VAR c1 = DIVIDE ( [WoW Value CW], q1 )
+                VAR c0 = DIVIDE ( [WoW Value PW], q0 )
+                VAR c0x = IF ( q0 = 0, c1, c0 )
+                RETURN ( q1 - q0 ) * c0x
+            )
+
+    MEASURE InventorySnapshot[WoW Cost Effect] =
+        VAR wk = [WoW Selected Week]
+        VAR pw = [WoW Prior Week]
+        VAR items =
+            CALCULATETABLE (
+                SUMMARIZE ( InventorySnapshot, InventorySnapshot[Warehouse], InventorySnapshot[StockCode] ),
+                InventorySnapshot[SnapshotDate] IN { wk, pw }
+            )
+        RETURN
+            SUMX (
+                items,
+                VAR q1 = [WoW Qty CW]
+                VAR q0 = [WoW Qty PW]
+                VAR c1 = DIVIDE ( [WoW Value CW], q1 )
+                VAR c0 = DIVIDE ( [WoW Value PW], q0 )
+                VAR c1x = IF ( q1 = 0, c0, c1 )
+                VAR c0x = IF ( q0 = 0, c1x, c0 )
+                RETURN ( c1x - c0x ) * q1
+            )
+
+    // Ajustes de valor sin cantidad, cantidades negativas, redondeo. Debe ser ~0.
+    MEASURE InventorySnapshot[WoW Other Effect] =
+        [WoW Delta] - [WoW Qty Effect] - [WoW Cost Effect]
+
+    // ---------- Idioma ----------
+    MEASURE InventorySnapshot[Lang] =
+        SELECTEDVALUE ( Language[Code], "ES" )
+
+    // Causa principal por fila (útil a nivel StockCode).
+    MEASURE InventorySnapshot[WoW Change Type] =
+        VAR v1 = [WoW Value CW]
+        VAR v0 = [WoW Value PW]
+        VAR q1 = [WoW Qty CW]
+        VAR q0 = [WoW Qty PW]
+        VAR d = [WoW Delta]
+        VAR k =
+            SWITCH (
+                TRUE (),
+                ABS ( d ) < 0.01, "type_none",
+                q0 = 0 && q1 <> 0, "type_new",
+                q1 = 0 && q0 <> 0, "type_removed",
+                ABS ( [WoW Qty Effect] ) >= ABS ( [WoW Cost Effect] ), "type_qty",
+                "type_cost"
+            )
+        RETURN
+            IF (
+                ISBLANK ( v1 ) && ISBLANK ( v0 ),
+                BLANK (),
+                IF (
+                    [Lang] = "EN",
+                    LOOKUPVALUE ( Translations[EN], Translations[Key], k ),
+                    LOOKUPVALUE ( Translations[ES], Translations[Key], k )
+                )
+            )
+
+    // ---------- Formato ----------
+    // Aumento de inventario = rojo, disminución = verde (cambiar si lo prefieres al revés).
+    MEASURE InventorySnapshot[WoW Delta Color] =
+        VAR d = [WoW Delta]
+        RETURN SWITCH ( TRUE (), d > 0, "#C0392B", d < 0, "#1E8449", "#6B7280" )
+
+    MEASURE InventorySnapshot[WoW Delta Label] =
+        VAR d = [WoW Delta]
+        VAR p = [WoW Delta %]
+        RETURN
+            IF ( d >= 0, "▲ ", "▼ " )
+                & FORMAT ( ABS ( d ), "$#,0" )
+                & "  (" & FORMAT ( p, "+0.0%;-0.0%;0.0%" ) & ")"
+
+    // Tendencia: últimas 13 semanas hasta la semana elegida (el eje usa InventorySnapshot[SnapshotDate]).
+    MEASURE InventorySnapshot[Trend Value 13W] =
+        VAR wk = [WoW Selected Week]
+        VAR d = MAX ( InventorySnapshot[SnapshotDate] )
+        RETURN IF ( d <= wk && d > wk - 91, [Inv Value] )
+
+    // ---------- Textos (títulos dinámicos: Formato > Título > fx > Valor del campo) ----------
+    MEASURE InventorySnapshot[T Report Title] =
+        VAR k = "rpt_title"
+        RETURN IF ( [Lang] = "EN", LOOKUPVALUE ( Translations[EN], Translations[Key], k ), LOOKUPVALUE ( Translations[ES], Translations[Key], k ) )
+
+    MEASURE InventorySnapshot[T Subtitle] =
+        VAR wkTxt = IF ( [Lang] = "EN", LOOKUPVALUE ( Translations[EN], Translations[Key], "lbl_week" ), LOOKUPVALUE ( Translations[ES], Translations[Key], "lbl_week" ) )
+        VAR vsTxt = IF ( [Lang] = "EN", LOOKUPVALUE ( Translations[EN], Translations[Key], "lbl_vs" ), LOOKUPVALUE ( Translations[ES], Translations[Key], "lbl_vs" ) )
+        RETURN
+            wkTxt & " " & FORMAT ( [WoW Selected Week], "yyyy-mm-dd" )
+                & "  " & vsTxt & "  " & FORMAT ( [WoW Prior Week], "yyyy-mm-dd" )
+
+    MEASURE InventorySnapshot[T KPI CW] =
+        VAR k = "kpi_cw"
+        RETURN IF ( [Lang] = "EN", LOOKUPVALUE ( Translations[EN], Translations[Key], k ), LOOKUPVALUE ( Translations[ES], Translations[Key], k ) )
+
+    MEASURE InventorySnapshot[T KPI PW] =
+        VAR k = "kpi_pw"
+        RETURN IF ( [Lang] = "EN", LOOKUPVALUE ( Translations[EN], Translations[Key], k ), LOOKUPVALUE ( Translations[ES], Translations[Key], k ) )
+
+    MEASURE InventorySnapshot[T KPI Delta] =
+        VAR k = "kpi_delta"
+        RETURN IF ( [Lang] = "EN", LOOKUPVALUE ( Translations[EN], Translations[Key], k ), LOOKUPVALUE ( Translations[ES], Translations[Key], k ) )
+
+    MEASURE InventorySnapshot[T KPI Qty Effect] =
+        VAR k = "kpi_qty_eff"
+        RETURN IF ( [Lang] = "EN", LOOKUPVALUE ( Translations[EN], Translations[Key], k ), LOOKUPVALUE ( Translations[ES], Translations[Key], k ) )
+
+    MEASURE InventorySnapshot[T KPI Cost Effect] =
+        VAR k = "kpi_cost_eff"
+        RETURN IF ( [Lang] = "EN", LOOKUPVALUE ( Translations[EN], Translations[Key], k ), LOOKUPVALUE ( Translations[ES], Translations[Key], k ) )
+
+    MEASURE InventorySnapshot[T Title Site] =
+        VAR k = "ttl_site"
+        RETURN IF ( [Lang] = "EN", LOOKUPVALUE ( Translations[EN], Translations[Key], k ), LOOKUPVALUE ( Translations[ES], Translations[Key], k ) )
+
+    MEASURE InventorySnapshot[T Title GroupedWH] =
+        VAR k = "ttl_gwh"
+        RETURN IF ( [Lang] = "EN", LOOKUPVALUE ( Translations[EN], Translations[Key], k ), LOOKUPVALUE ( Translations[ES], Translations[Key], k ) )
+
+    MEASURE InventorySnapshot[T Title Tree] =
+        VAR k = "ttl_tree"
+        RETURN IF ( [Lang] = "EN", LOOKUPVALUE ( Translations[EN], Translations[Key], k ), LOOKUPVALUE ( Translations[ES], Translations[Key], k ) )
+
+    MEASURE InventorySnapshot[T Title Top Up] =
+        VAR k = "ttl_up"
+        RETURN IF ( [Lang] = "EN", LOOKUPVALUE ( Translations[EN], Translations[Key], k ), LOOKUPVALUE ( Translations[ES], Translations[Key], k ) )
+
+    MEASURE InventorySnapshot[T Title Top Down] =
+        VAR k = "ttl_down"
+        RETURN IF ( [Lang] = "EN", LOOKUPVALUE ( Translations[EN], Translations[Key], k ), LOOKUPVALUE ( Translations[ES], Translations[Key], k ) )
+
+    MEASURE InventorySnapshot[T Title Matrix] =
+        VAR k = "ttl_matrix"
+        RETURN IF ( [Lang] = "EN", LOOKUPVALUE ( Translations[EN], Translations[Key], k ), LOOKUPVALUE ( Translations[ES], Translations[Key], k ) )
+
+    MEASURE InventorySnapshot[T Title Trend] =
+        VAR k = "ttl_trend"
+        RETURN IF ( [Lang] = "EN", LOOKUPVALUE ( Translations[EN], Translations[Key], k ), LOOKUPVALUE ( Translations[ES], Translations[Key], k ) )
+
+// Prueba rápida: debe regresar una fila con la semana elegida, la anterior,
+// la variación y "Otros" cercano a 0.
+EVALUATE
+ROW (
+    "Semana", [WoW Selected Week],
+    "Anterior", [WoW Prior Week],
+    "Inventario actual", [WoW Value CW],
+    "Inventario anterior", [WoW Value PW],
+    "Variacion", [WoW Delta],
+    "Efecto cantidad", [WoW Qty Effect],
+    "Efecto costo", [WoW Cost Effect],
+    "Otros", [WoW Other Effect]
+)

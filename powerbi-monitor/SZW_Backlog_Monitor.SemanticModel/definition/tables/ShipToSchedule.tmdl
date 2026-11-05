@@ -1,0 +1,44 @@
+table ShipToSchedule
+
+	column ShipToKey
+		dataType: string
+		summarizeBy: none
+		sourceColumn: ShipToKey
+
+	column ShipToName
+		dataType: string
+		summarizeBy: none
+		sourceColumn: ShipToName
+
+	column TruckWeekday
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: TruckWeekday
+
+	column TransitCalendarDays
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: TransitCalendarDays
+
+	column DateBasis
+		dataType: string
+		summarizeBy: none
+		sourceColumn: DateBasis
+
+	column LoadDaysBefore
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: LoadDaysBefore
+
+	partition ShipToSchedule = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents(DataFolder & "input\shipto_schedule.csv"), [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    Cols = Table.SelectColumns(Promoted, {"ShipToKey", "ShipToName", "TruckWeekday", "TransitCalendarDays", "DateBasis", "LoadDaysBefore", "Active"}, MissingField.UseNull),
+				    Blanks = Table.ReplaceValue(Cols, "", null, Replacer.ReplaceValue, {"TruckWeekday", "TransitCalendarDays", "LoadDaysBefore"}),
+				    Typed = Table.TransformColumnTypes(Blanks, {{"TruckWeekday", Int64.Type}, {"TransitCalendarDays", Int64.Type}, {"LoadDaysBefore", Int64.Type}}, "en-US"),
+				    Result = Table.SelectRows(Typed, each [Active] <> "0")
+				in
+				    Result

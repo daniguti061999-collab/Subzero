@@ -1,0 +1,13 @@
+Key,Value,Description
+BacklogGrowthPct,0.10,R4: alert when past-due backlog grows more than this vs the previous snapshot
+DemandChangePct,0.15,R7: alert when a line's order qty grows more than this
+PullInWorkdays,10,R7: alert when a line date is pulled in and lands within this many workdays
+IncludeTodayTruck,true,Count today's truck as the next truck (set false after the loading cutoff)
+HoldWarehouses,QH,Warehouses whose stock is not available to ship (semicolon separated) - VERIFY code
+BusinessDays,Mon-Fri,Saturday shipments are credited but Saturday is not a planned truck day
+MonitorWindow,06:00-18:00 ET,Hourly monitoring window (confirm business hours)
+CustomerGroup,Sub-Zero/Wolf,Pilot scope; customer codes live in rpt.SZW_Customers
+Holidays,2026-11-26;2026-11-27;2026-12-24;2026-12-25;2026-12-31;2027-01-01,Plant holidays: no run or ship (from the Oct 28 recovery plan)
+MaterialRiskWorkdays,40,R8: flag lines still needing raw material when their truck is within this many workdays (8-week lead time)
+CreditGraceDays,1,C1: days after expected arrival before a shipped-but-still-open line is flagged
+OpenPOMaxAgeHours,26,D2: alert when the newest Sub-Zero open PO file is older than this on a business day (confirm the portal frequency)

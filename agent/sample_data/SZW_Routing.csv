@@ -1,0 +1,14 @@
+RuleID,Description,NotifyEmails,EscalateEmails,EscalateAfterHours
+R1,Short on the truck after next (At Risk),cnixon@millsproducts.com;jzacarias@millsproducts.com,bjhonson@millsproducts.com,8
+R2,Short on the next truck (Critical) with no recovery plan,cnixon@millsproducts.com;jzacarias@millsproducts.com;twilcox@millsproducts.com,bjhonson@millsproducts.com,4
+R3,Missed truck (Past Due),bjhonson@millsproducts.com;cnixon@millsproducts.com;jzacarias@millsproducts.com;twilcox@millsproducts.com,mmcMillin@millsproducts.com,24
+R4,Past-due backlog growth over threshold,rrandolph@millsproducts.com;rpadron@millsproducts.com,mmcMillin@millsproducts.com,24
+R5,Critical or Past Due open over 24 h with no plan,mmcMillin@millsproducts.com,,0
+R6,Future demand over projected supply (Phase 2),cnixon@millsproducts.com;jzacarias@millsproducts.com,rrandolph@millsproducts.com;rpadron@millsproducts.com,168
+R7,Demand change (qty up or date pulled in),cnixon@millsproducts.com;jzacarias@millsproducts.com;rrandolph@millsproducts.com;rpadron@millsproducts.com;tsledge@millsproducts.com,,0
+D1,Data health (unmatched shipment / missing schedule / stale data),dgutierrez@millsproducts.com,,2
+R8,Raw material missing for a line inside the 8-week lead time,rrandolph@millsproducts.com;rpadron@millsproducts.com;cnixon@millsproducts.com;jzacarias@millsproducts.com,bjhonson@millsproducts.com,48
+C1,Shipped by Mills but still open on the customer PO list after arrival,twilcox@millsproducts.com;rrandolph@millsproducts.com;rpadron@millsproducts.com,mmcMillin@millsproducts.com,72
+K1,Sub-Zero PO line not on a SYSPRO sales order (not keyed),tsledge@millsproducts.com;twilcox@millsproducts.com,cnixon@millsproducts.com;jzacarias@millsproducts.com,24
+K2,SYSPRO SO line open but not on Sub-Zero open PO list,tsledge@millsproducts.com;twilcox@millsproducts.com,rrandolph@millsproducts.com;rpadron@millsproducts.com,72
+D2,Sub-Zero open PO file not received on schedule,twilcox@millsproducts.com;tsledge@millsproducts.com;dgutierrez@millsproducts.com,,0

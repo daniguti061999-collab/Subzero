@@ -1,0 +1,26 @@
+table Parts
+
+	column StockCode
+		dataType: string
+		summarizeBy: none
+		sourceColumn: StockCode
+
+	column Description
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Description
+
+	partition Parts = m
+		mode: import
+		source =
+				let
+				    Req = Table.PromoteHeaders(Csv.Document(File.Contents(DataFolder & "input\requirements.csv"), [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]), [PromoteAllScalars = true]),
+				    Exc = Table.PromoteHeaders(Csv.Document(File.Contents(DataFolder & "output\exceptions_register.csv"), [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]), [PromoteAllScalars = true]),
+				    A = Table.SelectColumns(Table.RenameColumns(Req, {{"StockDescription", "Description"}}), {"StockCode", "Description"}),
+				    B = Table.AddColumn(Table.RenameColumns(Table.SelectColumns(Exc, {"Part"}), {{"Part", "StockCode"}}), "Description", each null, type text),
+				    Both = Table.Combine({A, B}),
+				    Clean = Table.SelectRows(Both, each [StockCode] <> null and [StockCode] <> ""),
+				    Sorted = Table.Sort(Clean, {{"Description", Order.Descending}}),
+				    Result = Table.Distinct(Sorted, {"StockCode"})
+				in
+				    Result

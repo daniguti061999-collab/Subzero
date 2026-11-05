@@ -1,0 +1,41 @@
+table Shipments
+
+	column ShipmentNo
+		dataType: string
+		summarizeBy: none
+		sourceColumn: ShipmentNo
+
+	column ReqKey
+		dataType: string
+		summarizeBy: none
+		sourceColumn: ReqKey
+
+	column StockCode
+		dataType: string
+		summarizeBy: none
+		sourceColumn: StockCode
+
+	column ShipQty
+		dataType: double
+		formatString: #,0
+		summarizeBy: sum
+		sourceColumn: ShipQty
+
+	column ShipDate
+		dataType: dateTime
+		formatString: yyyy-mm-dd
+		summarizeBy: none
+		sourceColumn: ShipDate
+
+	partition Shipments = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents(DataFolder & "input\shipments.csv"), [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    Cols = Table.SelectColumns(Promoted, {"ShipmentNo", "ReqKey", "StockCode", "ShipQty", "ShipDate"}, MissingField.UseNull),
+				    Blanks = Table.ReplaceValue(Cols, "", null, Replacer.ReplaceValue, {"ShipQty", "ShipDate"}),
+				    Typed = Table.TransformColumnTypes(Blanks, {{"ShipQty", type number}, {"ShipDate", type date}}, "en-US"),
+				    Result = Typed
+				in
+				    Result

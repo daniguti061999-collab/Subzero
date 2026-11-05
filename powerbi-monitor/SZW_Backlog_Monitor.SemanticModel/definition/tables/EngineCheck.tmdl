@@ -1,0 +1,36 @@
+table EngineCheck
+
+	column ReqKey
+		dataType: string
+		summarizeBy: none
+		sourceColumn: ReqKey
+
+	column Status
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Status
+
+	column OpenQty
+		dataType: double
+		formatString: #,0
+		summarizeBy: sum
+		sourceColumn: OpenQty
+
+	column ShortQty
+		dataType: double
+		formatString: #,0
+		summarizeBy: sum
+		sourceColumn: ShortQty
+
+	partition EngineCheck = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents(DataFolder & "output\backlog_report.csv"), [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    Cols = Table.SelectColumns(Promoted, {"ReqKey", "Status", "OpenQty", "ShortQty"}, MissingField.UseNull),
+				    Blanks = Table.ReplaceValue(Cols, "", null, Replacer.ReplaceValue, {"OpenQty", "ShortQty"}),
+				    Typed = Table.TransformColumnTypes(Blanks, {{"OpenQty", type number}, {"ShortQty", type number}}, "en-US"),
+				    Result = Typed
+				in
+				    Result

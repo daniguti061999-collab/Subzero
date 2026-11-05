@@ -1,0 +1,129 @@
+// =====================================================================
+// Sub-Zero Open PO list in the backlog model (demand from the customer, Mills open qty from SYSPRO)
+// Same logic as engine/import_subzero_openpo.py --syspro + engine/szw_agent.py (K1, K2, C1 rules).
+// Flow F0 saves each emailed export to SharePoint: /SZW_Agent/Incoming/SubZeroOpenPO/
+// =====================================================================
+
+// ---------------- Power Query: SubZeroOpenPO (newest file in the folder) ----------------
+let
+    Files   = SharePoint.Files("https://millsproductstn.sharepoint.com/sites/<OpsSite>", [ApiVersion = 15]),
+    InDir   = Table.SelectRows(Files, each Text.Contains([Folder Path], "/SZW_Agent/Incoming/SubZeroOpenPO/")
+                                       and List.Contains({".xlsx", ".csv"}, Text.Lower([Extension]))),
+    Newest  = Table.First(Table.Sort(InDir, {{"Date created", Order.Descending}})),
+    Sheets  = if Text.Lower(Newest[Extension]) = ".csv" then null
+              else Table.SelectRows(Excel.Workbook(Newest[Content], false), each [Kind] = "Sheet"),
+    PoSheet = if Sheets = null then null
+              else let s = Table.SelectRows(Sheets, each Text.StartsWith([Name], "Open Purchase Orders"))
+                   in if Table.IsEmpty(s) then Sheets{0}[Data] else s{0}[Data],
+    Raw     = if Sheets = null
+              then Csv.Document(Newest[Content], [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv])
+              else PoSheet,
+    // The export starts with title lines; the header row is the one whose first cell is "Order"
+    HdrPos  = List.PositionOf(Table.Column(Raw, "Column1"), "Order"),
+    Hdr     = Table.PromoteHeaders(Table.Skip(Raw, HdrPos), [PromoteAllScalars = true]),
+    Lines   = Table.SelectRows(Hdr, each [Order] <> null and Text.StartsWith(Text.From([Order]), "P")),
+    Keep    = Table.SelectColumns(Lines, {"Order", "Line", "Release", "Item", "Whs", "Description", "Open Qty",
+                "Due Date", "Buyer Email", "Message", "Your Ship Date", "Status"}, MissingField.UseNull),
+    Typed   = Table.TransformColumnTypes(Keep, {{"Order", type text}, {"Line", Int64.Type}, {"Release", Int64.Type},
+                {"Item", type text}, {"Whs", type text}, {"Open Qty", type number}, {"Due Date", type date}}, "en-US"),
+    PoKey   = Table.AddColumn(Typed, "PoKey", each [Order] & "|" & Text.From([Line]) & "|" & Text.From([Release]), type text),
+    ShipTo  = Table.AddColumn(PoKey, "ShipToKey", each "WHS-" & Text.Trim([Whs]), type text),
+    Ready   = Table.AddColumn(ShipTo, "ReadyState", each
+                let s = Text.Lower(Text.From([Status] ?? "")) in
+                if s = "" then "Unknown"
+                else if Text.Contains(s, "ready to ship") then "Ready"
+                else if Text.Contains(s, "raw material") then "NoMaterial"
+                else "NotReady", type text),
+    Src     = Table.AddColumn(Ready, "SourceFile", each Newest[Name], type text),
+    Recv    = Table.AddColumn(Src, "FileReceived", each Newest[Date created], type datetime)
+in
+    Recv
+
+// ---------------- Relationships ----------------
+// SubZeroOpenPO[ShipToKey] (*) -> ShipToSchedule[ShipToKey] (1)
+// (No relationship to Requirements: matching is by customer PO number + item, done in the columns below.)
+// ShipToSchedule gets a LoadDaysBefore column (Whs 10 = 1: loaded Thursday, ships Friday).
+
+// ---------------- Calculated columns on SubZeroOpenPO ----------------
+ErpLines =
+VAR po = SubZeroOpenPO[Order]
+VAR it = SubZeroOpenPO[Item]
+RETURN CALCULATE ( COUNTROWS ( Requirements ), REMOVEFILTERS ( Requirements ),
+        Requirements[CustomerPoNumber] = po, Requirements[StockCode] = it, Requirements[LineStatus] = "Open" ) + 0
+// VERIFY: SYSPRO StockCode equals Sub-Zero's Item number; if not, map through the customer part cross-reference.
+
+ErpOpenQty =
+VAR po = SubZeroOpenPO[Order]
+VAR it = SubZeroOpenPO[Item]
+RETURN CALCULATE ( SUM ( Requirements[OpenQty] ), REMOVEFILTERS ( Requirements ),
+        Requirements[CustomerPoNumber] = po, Requirements[StockCode] = it, Requirements[LineStatus] = "Open" ) + 0
+
+MatchStatus = IF ( SubZeroOpenPO[ErpLines] > 0, "Matched", "NotInERP" )
+
+MillsOpenQty =                                            // what Mills still has to ship
+IF ( SubZeroOpenPO[MatchStatus] = "Matched", SubZeroOpenPO[ErpOpenQty], SubZeroOpenPO[Open Qty] )
+
+NotCreditedQty =                                          // C1: shipped by Mills, still open at Sub-Zero
+MAX ( 0, SubZeroOpenPO[Open Qty] - SubZeroOpenPO[MillsOpenQty] )
+
+ReqShipDate =
+VAR due     = SubZeroOpenPO[Due Date]                     // Sub-Zero Due Date = arrival date
+VAR wd      = RELATED ( ShipToSchedule[TruckWeekday] )
+VAR transit = RELATED ( ShipToSchedule[TransitCalendarDays] )
+VAR latest  = due - transit
+VAR truck   = latest - MOD ( WEEKDAY ( latest, 2 ) - wd, 7 )
+RETURN IF ( ISBLANK ( wd ), due, truck )
+// Holidays: if the truck date is in the Holidays table, use the business day before (see engine prev_business_day).
+
+ReadyBy = SubZeroOpenPO[ReqShipDate] - RELATED ( ShipToSchedule[LoadDaysBefore] )   // Thursday load for Whs 10
+
+NextTruck1 =
+VAR asof = MAX ( RunInfo[AsOfDate] )
+VAR wd   = RELATED ( ShipToSchedule[TruckWeekday] )
+RETURN asof + MOD ( wd - WEEKDAY ( asof, 2 ), 7 )
+
+NextTruck2 = SubZeroOpenPO[NextTruck1] + 7
+
+ShortQty =                                               // readiness until SYSPRO FG stock is netted in
+IF ( SubZeroOpenPO[ReadyState] IN { "Ready", "Unknown" }, 0, SubZeroOpenPO[MillsOpenQty] )
+
+DaysPastDue =
+VAR asof = MAX ( RunInfo[AsOfDate] )
+RETURN IF ( SubZeroOpenPO[MillsOpenQty] > 0 && SubZeroOpenPO[ReqShipDate] < asof, INT ( asof - SubZeroOpenPO[ReqShipDate] ), 0 )
+
+Status =
+VAR asof = MAX ( RunInfo[AsOfDate] )
+RETURN
+    SWITCH ( TRUE (),
+        SubZeroOpenPO[MillsOpenQty] <= 0, "Complete",
+        SubZeroOpenPO[ReqShipDate] < asof, "Past Due",
+        SubZeroOpenPO[ShortQty] > 0 && SubZeroOpenPO[ReqShipDate] <= SubZeroOpenPO[NextTruck1], "Critical",
+        SubZeroOpenPO[ShortQty] > 0 && SubZeroOpenPO[ReqShipDate] <= SubZeroOpenPO[NextTruck2], "At Risk",
+        "On Track" )
+
+// ---------------- Calculated column on Requirements (SYSPRO) ----------------
+OnCustomerList =                                         // K2 when FALSE and OpenQty > 0
+VAR po = Requirements[CustomerPoNumber]
+VAR it = Requirements[StockCode]
+RETURN CALCULATE ( COUNTROWS ( SubZeroOpenPO ), REMOVEFILTERS ( SubZeroOpenPO ),
+        SubZeroOpenPO[Order] = po, SubZeroOpenPO[Item] = it ) > 0
+
+// ---------------- Measures ----------------
+DEFINE
+    MEASURE SubZeroOpenPO[SZ Open Qty] = SUM ( SubZeroOpenPO[Open Qty] )
+    MEASURE SubZeroOpenPO[SZ Past Due per Sub-Zero] =
+        VAR asof = MAX ( RunInfo[AsOfDate] ) RETURN CALCULATE ( [SZ Open Qty], SubZeroOpenPO[Due Date] < asof )
+    MEASURE SubZeroOpenPO[True Backlog Qty] =
+        VAR asof = MAX ( RunInfo[AsOfDate] )
+        RETURN CALCULATE ( SUM ( SubZeroOpenPO[MillsOpenQty] ), SubZeroOpenPO[Due Date] < asof )
+    MEASURE SubZeroOpenPO[Missed Truck Qty] =
+        CALCULATE ( SUM ( SubZeroOpenPO[MillsOpenQty] ), SubZeroOpenPO[Status] = "Past Due" )
+    MEASURE SubZeroOpenPO[Not Credited Qty] = SUM ( SubZeroOpenPO[NotCreditedQty] )
+    MEASURE SubZeroOpenPO[Not Keyed Lines] = CALCULATE ( COUNTROWS ( SubZeroOpenPO ), SubZeroOpenPO[MatchStatus] = "NotInERP" )
+    MEASURE SubZeroOpenPO[Open PO File] =
+        "Sub-Zero list: " & MAX ( SubZeroOpenPO[SourceFile] ) & " (" & FORMAT ( MAX ( SubZeroOpenPO[FileReceived] ), "yyyy-mm-dd hh:nn" ) & ")"
+
+// Check against the Oct 28 workbook (plan columns instead of SYSPRO): SZ Open 93,127; Past due per Sub-Zero 17,870;
+// True backlog 3,970; Missed truck 8,520; Not credited 15,980.
+EVALUATE ROW ( "Open", [SZ Open Qty], "PastDueSZ", [SZ Past Due per Sub-Zero], "TrueBacklog", [True Backlog Qty],
+               "MissedTruck", [Missed Truck Qty], "NotCredited", [Not Credited Qty], "NotKeyed", [Not Keyed Lines] )

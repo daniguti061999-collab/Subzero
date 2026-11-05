@@ -1,0 +1,23 @@
+table BizCalendar
+
+	column Date
+		dataType: dateTime
+		formatString: yyyy-mm-dd
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: [Date]
+
+	column IsBusinessDay
+		dataType: boolean
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: [IsBusinessDay]
+
+	partition BizCalendar = calculated
+		mode: import
+		source =
+				VAR h = SELECTCOLUMNS ( Holidays, "D", Holidays[Date] )
+				RETURN
+				    ADDCOLUMNS (
+				        CALENDAR ( DATE ( 2025, 1, 1 ), DATE ( 2027, 12, 31 ) ),
+				        "IsBusinessDay", WEEKDAY ( [Date], 2 ) <= 5 && NOT ( [Date] IN h ) )

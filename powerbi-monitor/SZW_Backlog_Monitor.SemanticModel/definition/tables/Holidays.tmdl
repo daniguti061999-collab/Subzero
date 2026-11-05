@@ -1,0 +1,20 @@
+table Holidays
+
+	column Date
+		dataType: dateTime
+		formatString: yyyy-mm-dd
+		summarizeBy: none
+		sourceColumn: Date
+
+	partition Holidays = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents(DataFolder & "input\SZW_Config.csv"), [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    Row = Table.SelectRows(Promoted, each [Key] = "Holidays"),
+				    Raw = if Table.IsEmpty(Row) then "" else Row{0}[Value],
+				    Items = List.Select(List.Transform(Text.Split(Raw, ";"), Text.Trim), each _ <> ""),
+				    Result = Table.FromList(List.Transform(Items, each Date.FromText(_)), Splitter.SplitByNothing(), type table [Date = date])
+				in
+				    Result

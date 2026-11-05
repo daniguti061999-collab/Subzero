@@ -1,0 +1,31 @@
+table BacklogSnapshot
+
+	column SnapshotDate
+		dataType: dateTime
+		formatString: yyyy-mm-dd
+		summarizeBy: none
+		sourceColumn: SnapshotDate
+
+	column StockCode
+		dataType: string
+		summarizeBy: none
+		sourceColumn: StockCode
+
+	column PastDueQty
+		dataType: double
+		formatString: #,0
+		summarizeBy: sum
+		sourceColumn: PastDueQty
+
+	partition BacklogSnapshot = m
+		mode: import
+		source =
+				let
+				    // Daily snapshot files written by the agent (production: flow F3 to SharePoint SZW_Agent/Snapshots)
+				    Files = Folder.Files(DataFolder & "output"),
+				    Snaps = Table.SelectRows(Files, each Text.StartsWith([Name], "snapshot_") and [Extension] = ".csv"),
+				    Parsed = Table.AddColumn(Snaps, "T", each Table.PromoteHeaders(Csv.Document([Content], [Delimiter = ",", Encoding = 65001]), [PromoteAllScalars = true])),
+				    Combined = Table.Combine(Parsed[T]),
+				    Result = Table.TransformColumnTypes(Combined, {{"SnapshotDate", type date}, {"StockCode", type text}, {"PastDueQty", type number}}, "en-US")
+				in
+				    Result

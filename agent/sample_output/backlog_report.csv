@@ -1,0 +1,8 @@
+Status,Customer,ShipToKey,StockCode,SalesOrder,SalesOrderLine,ReqKey,CustomerPoNumber,OrderLineDate,ReqShipDate,Truck,OrderQty,ShippedQty,OpenQty,FGAvailable,CumOpenByPart,ShortQty,DaysPastDue,Aging,PastDueValue,Issues
+On Track,SZW001,SZ-A,SZ-1001,074120,1,074120|1,PO-5501,2026-10-29,2026-10-27,Tue truck,500,350,150.0,200.0,150.0,0.0,0,Not past due,0.0,
+Critical,SZW003,SZ-C,SZ-2002,074140,1,074140|1,PO-5515,2026-11-02,2026-10-29,Thu truck,500,0,500.0,300.0,500.0,200.0,0,Not past due,0.0,
+At Risk,SZW002,SZ-B,SZ-2002,074133,2,074133|2,PO-5512,2026-11-05,2026-11-03,Tue truck,1000,0,1000.0,300.0,1500.0,1000.0,0,Not past due,0.0,
+Past Due,SZW001,SZ-A,SZ-4410,073950,3,073950|3,PO-5402,2026-10-15,2026-10-13,Tue truck,120,40,80.0,0.0,80.0,80.0,14,8-14 days,568.0,
+On Track,SZW002,SZ-ZZ,SZ-7700,074160,1,074160|1,PO-5533,2026-11-20,2026-11-20,,100,0,100.0,0.0,100.0,100.0,0,Not past due,0.0,No truck schedule for ship-to
+Past Due,SZW003,SZ-C,WF-3150,074098,1,074098|1,PO-5488,2026-10-26,2026-10-22,Thu truck,300,0,300.0,0.0,300.0,300.0,5,3-7 days,3720.0,
+On Track,SZW001,SZ-A,WF-5025,074152,1,074152|1,PO-5530,2026-11-12,2026-11-10,Tue truck,400,0,400.0,900.0,400.0,0.0,0,Not past due,0.0,

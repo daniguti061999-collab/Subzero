@@ -1,0 +1,41 @@
+table Translations
+
+	column Key
+		dataType: string
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: [Key]
+
+	column EN
+		dataType: string
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: [EN]
+
+	column ES
+		dataType: string
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: [ES]
+
+	partition Translations = calculated
+		mode: import
+		source =
+				DATATABLE ( "Key", STRING, "EN", STRING, "ES", STRING, {
+				{ "rpt_title", "Sub-Zero/Wolf Shipment & Backlog Monitor", "Monitor de Embarques y Backlog Sub-Zero/Wolf" },
+				{ "lbl_asof", "Data as of", "Datos al" },
+				{ "kpi_pd", "Past due: missed the truck", "Atrasado: perdió el camión" },
+				{ "kpi_tb", "True backlog: due date passed, not shipped", "Backlog real: vencido y sin enviar" },
+				{ "kpi_cr", "Critical: not ready for the next truck", "Crítico: no listo para el próximo camión" },
+				{ "kpi_ar", "At risk: not ready for the truck after", "En riesgo: no listo para el siguiente camión" },
+				{ "kpi_c1", "Shipped, still open at Sub-Zero", "Enviado, aún abierto en Sub-Zero" },
+				{ "ttl_trucks", "Next trucks", "Próximos camiones" },
+				{ "ttl_aging", "Past due by part and age", "Atraso por parte y antigüedad" },
+				{ "ttl_trend", "Past-due trend (daily snapshots)", "Tendencia de atraso (fotos diarias)" },
+				{ "ttl_ex", "Open exceptions", "Excepciones abiertas" },
+				{ "ttl_lines", "All Sub-Zero PO lines", "Todas las líneas de OC de Sub-Zero" },
+				{ "ttl_health", "Model vs. agent engine (must match)", "Modelo vs. motor del agente (deben coincidir)" },
+				{ "sl_shipto", "Ship-to", "Destino" },
+				{ "sl_part", "Part", "Parte" },
+				{ "sl_status", "Status", "Estatus" }
+				} )

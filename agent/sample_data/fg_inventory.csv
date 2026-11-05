@@ -1,0 +1,6 @@
+StockCode,Warehouse,OnHandQty,AllocatedQty,InTransitQty,UnitCost,Description,ProductClass
+SZ-1001,FG01,200,150,0,3.10,Handle bracket (fictional),401
+SZ-2002,FG01,300,300,0,6.40,Door handle (fictional),401
+SZ-2002,QH,50,0,0,6.40,Door handle (fictional),401
+WF-5025,FG01,900,400,0,2.30,Bezel (fictional),401
+WF-3150,FG01,0,0,0,8.80,Trim rail (fictional),401

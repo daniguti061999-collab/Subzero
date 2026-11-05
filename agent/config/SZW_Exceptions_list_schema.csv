@@ -1,0 +1,27 @@
+Column,SharePointType,Required,Indexed,Notes
+Title,Single line of text,Yes,No,Set to ExceptionKey
+ExceptionKey,Single line of text,Yes,Yes (enforce unique),RuleID|ReqKey|ReqShipDate
+RuleID,Choice,Yes,Yes,R1;R2;R3;R4;R5;R6;R7;D1
+Severity,Choice,Yes,No,Warning;Critical;Escalation;Predictive;System
+Status,Choice,Yes,Yes,New;Acknowledged;Recovery planned;Resolved;Auto-cleared
+Part,Single line of text,No,Yes,
+Customer,Single line of text,No,No,
+ShipTo,Single line of text,No,No,
+ReqKey,Single line of text,No,No,SalesOrder|SalesOrderLine
+ReqShipDate,Date only,No,No,Truck departure date
+Truck,Single line of text,No,No,
+OpenQty,Number,No,No,
+ShortQty,Number,No,No,
+DaysPastDue,Number,No,No,
+FGAvailable,Number,No,No,
+Detail,Multiple lines of text,No,No,
+OwnerGroup,Choice,No,No,Planning;Shipping;Operations;Supply chain;Management;Agent owner
+AssignedTo,Person,No,No,
+RecoveryPlan,Multiple lines of text,No,No,Filled by the owner
+RecoveryDate,Date only,No,No,
+FirstDetected,Date and time,Yes,No,
+LastSeen,Date and time,Yes,No,
+LastNotified,Date and time,No,No,
+ClearedAt,Date and time,No,No,
+EscalationLevel,Number,No,No,0-3
+RunID,Single line of text,No,No,Links to SZW_RunLog

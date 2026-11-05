@@ -1,0 +1,4 @@
+ShipToKey,ShipToName,TruckWeekday,TransitCalendarDays,DateBasis,Active
+SZ-A,Sample location A (Tue truck),2,2,D,1
+SZ-B,Sample location B (Tue truck),2,2,D,1
+SZ-C,Sample location C (Thu truck),4,4,D,1

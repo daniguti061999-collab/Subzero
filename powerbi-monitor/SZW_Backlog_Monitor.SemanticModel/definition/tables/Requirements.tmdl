@@ -1,0 +1,630 @@
+table Requirements
+
+	column Customer
+		dataType: string
+		displayFolder: Source
+		summarizeBy: none
+		sourceColumn: Customer
+
+	column CustomerGroup
+		dataType: string
+		displayFolder: Source
+		summarizeBy: none
+		sourceColumn: CustomerGroup
+
+	column CustomerPoNumber
+		dataType: string
+		displayFolder: Source
+		summarizeBy: none
+		sourceColumn: CustomerPoNumber
+
+	column SalesOrder
+		dataType: string
+		displayFolder: Source
+		summarizeBy: none
+		sourceColumn: SalesOrder
+
+	column SalesOrderLine
+		dataType: string
+		displayFolder: Source
+		summarizeBy: none
+		sourceColumn: SalesOrderLine
+
+	column ReqKey
+		dataType: string
+		displayFolder: Source
+		summarizeBy: none
+		sourceColumn: ReqKey
+
+	column StockCode
+		dataType: string
+		displayFolder: Source
+		summarizeBy: none
+		sourceColumn: StockCode
+
+	column StockDescription
+		dataType: string
+		displayFolder: Source
+		summarizeBy: none
+		sourceColumn: StockDescription
+
+	column ShipToKey
+		dataType: string
+		displayFolder: Source
+		summarizeBy: none
+		sourceColumn: ShipToKey
+
+	column LineStatus
+		dataType: string
+		displayFolder: Source
+		summarizeBy: none
+		sourceColumn: LineStatus
+
+	column ReadyState
+		dataType: string
+		displayFolder: Source
+		summarizeBy: none
+		sourceColumn: ReadyState
+
+	column Notes
+		dataType: string
+		displayFolder: Source
+		summarizeBy: none
+		sourceColumn: Notes
+
+	column DataNote
+		dataType: string
+		displayFolder: Source
+		summarizeBy: none
+		sourceColumn: DataNote
+
+	column MatchStatus
+		dataType: string
+		displayFolder: Source
+		summarizeBy: none
+		sourceColumn: MatchStatus
+
+	column OrderQty
+		dataType: double
+		formatString: #,0
+		displayFolder: Source
+		summarizeBy: sum
+		sourceColumn: OrderQty
+
+	column ShippedQty
+		dataType: double
+		formatString: #,0
+		displayFolder: Source
+		summarizeBy: sum
+		sourceColumn: ShippedQty
+
+	column OpenQty
+		dataType: double
+		formatString: #,0
+		displayFolder: Source
+		summarizeBy: sum
+		sourceColumn: OpenQty
+
+	column CustomerOpenQty
+		dataType: double
+		formatString: #,0
+		displayFolder: Source
+		summarizeBy: sum
+		sourceColumn: CustomerOpenQty
+
+	column UnitPrice
+		dataType: double
+		formatString: #,0
+		displayFolder: Source
+		summarizeBy: sum
+		sourceColumn: UnitPrice
+
+	column OrderLineDate
+		dataType: dateTime
+		formatString: yyyy-mm-dd
+		displayFolder: Source
+		summarizeBy: none
+		sourceColumn: OrderLineDate
+
+	column ReqShipDate =
+			// Truck departure that meets the Sub-Zero due date (arrival), moved to the business day before a holiday
+			VAR lineDate = Requirements[OrderLineDate]
+			VAR wd = RELATED ( ShipToSchedule[TruckWeekday] )
+			VAR transit = RELATED ( ShipToSchedule[TransitCalendarDays] )
+			VAR basis = RELATED ( ShipToSchedule[DateBasis] )
+			VAR latest = IF ( basis = "D", lineDate - transit, lineDate )
+			VAR truck = latest - MOD ( WEEKDAY ( latest, 2 ) - wd, 7 )
+			RETURN
+			    IF ( ISBLANK ( lineDate ), BLANK (),
+			        IF ( ISBLANK ( wd ), lineDate,
+			            MAXX ( FILTER ( BizCalendar, BizCalendar[Date] <= truck && BizCalendar[IsBusinessDay] ), BizCalendar[Date] ) ) )
+		dataType: dateTime
+		formatString: yyyy-mm-dd
+		displayFolder: Agent
+		summarizeBy: none
+
+	column Truck =
+			VAR wd = RELATED ( ShipToSchedule[TruckWeekday] )
+			RETURN IF ( ISBLANK ( wd ), BLANK (), FORMAT ( DATE ( 2024, 1, wd ), "ddd" ) & " truck" )
+		dataType: string
+		displayFolder: Agent
+		summarizeBy: none
+
+	column ReadyBy =
+			VAR ld = RELATED ( ShipToSchedule[LoadDaysBefore] )
+			VAR s = Requirements[ReqShipDate]
+			RETURN
+			    IF ( ISBLANK ( s ), BLANK (),
+			        IF ( ld > 0, MAXX ( FILTER ( BizCalendar, BizCalendar[Date] <= s - ld && BizCalendar[IsBusinessDay] ), BizCalendar[Date] ), s ) )
+		dataType: dateTime
+		formatString: yyyy-mm-dd
+		displayFolder: Agent
+		summarizeBy: none
+
+	column NextTruck1 =
+			VAR asof = MAX ( RunInfo[AsOfDate] )
+			VAR wd = RELATED ( ShipToSchedule[TruckWeekday] )
+			RETURN IF ( ISBLANK ( wd ), asof + 1, asof + MOD ( wd - WEEKDAY ( asof, 2 ), 7 ) )
+		dataType: dateTime
+		formatString: yyyy-mm-dd
+		isHidden
+		displayFolder: Agent
+		summarizeBy: none
+
+	column NextTruck2 =
+			VAR wd = RELATED ( ShipToSchedule[TruckWeekday] )
+			RETURN IF ( ISBLANK ( wd ), MAX ( RunInfo[AsOfDate] ) + 7, Requirements[NextTruck1] + 7 )
+		dataType: dateTime
+		formatString: yyyy-mm-dd
+		isHidden
+		displayFolder: Agent
+		summarizeBy: none
+
+	column HasFG =
+			VAR p = Requirements[StockCode]
+			RETURN COUNTROWS ( FILTER ( FGInventory, FGInventory[StockCode] = p && NOT ( FGInventory[Warehouse] IN { "QH" } ) ) ) > 0
+		dataType: boolean
+		isHidden
+		displayFolder: Agent
+		summarizeBy: none
+
+	column FGAvailable =
+			// FG on hand outside quality-hold warehouses (QH - VERIFY code)
+			VAR p = Requirements[StockCode]
+			RETURN SUMX ( FILTER ( FGInventory, FGInventory[StockCode] = p && NOT ( FGInventory[Warehouse] IN { "QH" } ) ), FGInventory[OnHandQty] ) + 0
+		dataType: double
+		formatString: #,0
+		displayFolder: Agent
+		summarizeBy: sum
+
+	column CumOpenByPart =
+			VAR p = Requirements[StockCode]
+			VAR d = COALESCE ( Requirements[ReqShipDate], DATE ( 9999, 12, 31 ) )
+			VAR k = Requirements[ReqKey]
+			RETURN
+			    SUMX (
+			        FILTER ( ALL ( Requirements[StockCode], Requirements[ReqShipDate], Requirements[ReqKey], Requirements[OpenQty] ),
+			            Requirements[StockCode] = p
+			                && ( COALESCE ( Requirements[ReqShipDate], DATE ( 9999, 12, 31 ) ) < d
+			                     || ( COALESCE ( Requirements[ReqShipDate], DATE ( 9999, 12, 31 ) ) = d && Requirements[ReqKey] <= k ) ) ),
+			        Requirements[OpenQty] )
+		dataType: double
+		formatString: #,0
+		isHidden
+		displayFolder: Agent
+		summarizeBy: none
+
+	column ShortQty =
+			// FG netting when SYSPRO stock exists for the part; otherwise readiness from the production note
+			VAR netted = MIN ( Requirements[OpenQty], MAX ( 0, Requirements[CumOpenByPart] - Requirements[FGAvailable] ) )
+			RETURN
+			    IF ( NOT Requirements[HasFG] && Requirements[ReadyState] <> "",
+			        IF ( Requirements[ReadyState] IN { "Ready", "Unknown" }, 0, Requirements[OpenQty] ),
+			        netted )
+		dataType: double
+		formatString: #,0
+		displayFolder: Agent
+		summarizeBy: sum
+
+	column DaysPastDue =
+			VAR asof = MAX ( RunInfo[AsOfDate] )
+			VAR s = Requirements[ReqShipDate]
+			RETURN IF ( Requirements[OpenQty] > 0 && NOT ISBLANK ( s ) && s < asof, INT ( asof - s ), 0 )
+		dataType: int64
+		formatString: 0
+		displayFolder: Agent
+		summarizeBy: none
+
+	column AgingBucket =
+			SWITCH ( TRUE (),
+			    Requirements[DaysPastDue] = 0, "Not past due",
+			    Requirements[DaysPastDue] <= 2, "1-2 days",
+			    Requirements[DaysPastDue] <= 7, "3-7 days",
+			    Requirements[DaysPastDue] <= 14, "8-14 days",
+			    "15+ days" )
+		dataType: string
+		displayFolder: Agent
+		summarizeBy: none
+		sortByColumn: AgingOrder
+
+	column AgingOrder =
+			SWITCH ( Requirements[AgingBucket], "1-2 days", 1, "3-7 days", 2, "8-14 days", 3, "15+ days", 4, 0 )
+		dataType: int64
+		formatString: 0
+		isHidden
+		displayFolder: Agent
+		summarizeBy: none
+
+	column Status =
+			VAR asof = MAX ( RunInfo[AsOfDate] )
+			VAR s = Requirements[ReqShipDate]
+			RETURN
+			    SWITCH ( TRUE (),
+			        Requirements[OpenQty] <= 0, "Complete",
+			        ISBLANK ( s ), "Data Issue",
+			        s < asof, "Past Due",
+			        Requirements[ShortQty] > 0 && s <= Requirements[NextTruck1], "Critical",
+			        Requirements[ShortQty] > 0 && s <= Requirements[NextTruck2], "At Risk",
+			        "On Track" )
+		dataType: string
+		displayFolder: Agent
+		summarizeBy: none
+		sortByColumn: StatusOrder
+
+	column StatusOrder =
+			SWITCH ( Requirements[Status], "Past Due", 1, "Critical", 2, "At Risk", 3, "Data Issue", 4, "On Track", 5, 6 )
+		dataType: int64
+		formatString: 0
+		isHidden
+		displayFolder: Agent
+		summarizeBy: none
+
+	column TruckWindow =
+			VAR asof = MAX ( RunInfo[AsOfDate] )
+			VAR s = Requirements[ReqShipDate]
+			RETURN
+			    SWITCH ( TRUE (),
+			        Requirements[OpenQty] <= 0, "Done",
+			        ISBLANK ( s ), "No date",
+			        s < asof, "Missed",
+			        s <= Requirements[NextTruck1], "Next truck",
+			        s <= Requirements[NextTruck2], "Truck after",
+			        "Later" )
+		dataType: string
+		displayFolder: Agent
+		summarizeBy: none
+
+	column LastShipDate =
+			VAR k = Requirements[ReqKey]
+			RETURN MAXX ( FILTER ( Shipments, Shipments[ReqKey] = k ), Shipments[ShipDate] )
+		dataType: dateTime
+		formatString: yyyy-mm-dd
+		displayFolder: Agent
+		summarizeBy: none
+
+	column ShippedNotCreditedQty =
+			MAX ( 0, Requirements[CustomerOpenQty] - Requirements[OpenQty] )
+		dataType: double
+		formatString: #,0
+		displayFolder: Agent
+		summarizeBy: sum
+
+	column C1Flag =
+			// Shipped by Mills, still open on Sub-Zero's list 1+ day after the truck should have arrived
+			VAR asof = MAX ( RunInfo[AsOfDate] )
+			VAR basis = COALESCE ( Requirements[LastShipDate], Requirements[ReqShipDate] )
+			VAR transit = COALESCE ( RELATED ( ShipToSchedule[TransitCalendarDays] ), 3 )
+			VAR fromDay = MIN ( basis, asof ) + transit
+			VAR arrival = MINX ( FILTER ( BizCalendar, BizCalendar[Date] >= fromDay && BizCalendar[IsBusinessDay] ), BizCalendar[Date] )
+			RETURN Requirements[ShippedNotCreditedQty] > 0 && NOT ISBLANK ( basis ) && INT ( asof - arrival ) >= 1
+		dataType: boolean
+		displayFolder: Agent
+		summarizeBy: none
+
+	column PastDueBySubZero =
+			VAR asof = MAX ( RunInfo[AsOfDate] )
+			RETURN NOT ISBLANK ( Requirements[OrderLineDate] ) && Requirements[OrderLineDate] < asof
+		dataType: boolean
+		displayFolder: Agent
+		summarizeBy: none
+
+	column BizDaysToShip =
+			VAR asof = MAX ( RunInfo[AsOfDate] )
+			VAR s = Requirements[ReqShipDate]
+			RETURN COUNTROWS ( FILTER ( BizCalendar, BizCalendar[Date] > asof && BizCalendar[Date] <= s && BizCalendar[IsBusinessDay] ) ) + 0
+		dataType: int64
+		formatString: 0
+		isHidden
+		displayFolder: Agent
+		summarizeBy: none
+
+	column R8Flag =
+			// Raw material missing and the truck is inside the 8-week (40 workday) lead time
+			Requirements[ReadyState] = "NoMaterial"
+			    && Requirements[Status] IN { "On Track", "At Risk" }
+			    && Requirements[BizDaysToShip] <= 40
+		dataType: boolean
+		displayFolder: Agent
+		summarizeBy: none
+
+	column EngineStatus =
+			VAR k = Requirements[ReqKey]
+			RETURN MAXX ( FILTER ( EngineCheck, EngineCheck[ReqKey] = k ), EngineCheck[Status] )
+		dataType: string
+		displayFolder: Agent
+		summarizeBy: none
+
+	column EngineShortQty =
+			VAR k = Requirements[ReqKey]
+			RETURN MAXX ( FILTER ( EngineCheck, EngineCheck[ReqKey] = k ), EngineCheck[ShortQty] )
+		dataType: double
+		formatString: #,0
+		isHidden
+		displayFolder: Agent
+		summarizeBy: none
+
+	column MatchesEngine =
+			Requirements[Status] = Requirements[EngineStatus]
+			    && ABS ( Requirements[ShortQty] - Requirements[EngineShortQty] ) < 0.001
+		dataType: boolean
+		displayFolder: Agent
+		summarizeBy: none
+
+	measure 'As Of Date' =
+			MAX ( RunInfo[AsOfDate] )
+		formatString: ddd mmm d, yyyy
+		displayFolder: Info
+
+	measure 'Open Qty' =
+			SUM ( Requirements[OpenQty] )
+		formatString: #,0
+		displayFolder: KPI
+
+	measure 'Lines' =
+			COUNTROWS ( Requirements )
+		formatString: #,0
+		displayFolder: KPI
+
+	measure 'Short Qty' =
+			SUM ( Requirements[ShortQty] )
+		formatString: #,0
+		displayFolder: KPI
+
+	measure 'Past Due Qty' =
+			CALCULATE ( SUM ( Requirements[OpenQty] ), Requirements[Status] = "Past Due" ) + 0
+		formatString: #,0
+		displayFolder: KPI
+
+	measure 'Past Due Lines' =
+			CALCULATE ( COUNTROWS ( Requirements ), Requirements[Status] = "Past Due" ) + 0
+		formatString: #,0
+		displayFolder: KPI
+
+	measure 'Past Due $' =
+			SUMX ( FILTER ( Requirements, Requirements[Status] = "Past Due" ), Requirements[OpenQty] * Requirements[UnitPrice] )
+		formatString: $#,0
+		displayFolder: KPI
+
+	measure 'SZ Open Qty' =
+			SUM ( Requirements[CustomerOpenQty] )
+		formatString: #,0
+		displayFolder: KPI
+
+	measure 'SZ Past Due Qty' =
+			CALCULATE ( SUM ( Requirements[CustomerOpenQty] ), Requirements[PastDueBySubZero] = TRUE () ) + 0
+		formatString: #,0
+		displayFolder: KPI
+
+	measure 'True Backlog Qty' =
+			CALCULATE ( SUM ( Requirements[OpenQty] ), Requirements[PastDueBySubZero] = TRUE () ) + 0
+		formatString: #,0
+		displayFolder: KPI
+
+	measure 'Missed Truck Not Yet Due Qty' =
+			CALCULATE ( SUM ( Requirements[OpenQty] ), Requirements[Status] = "Past Due", Requirements[PastDueBySubZero] = FALSE () ) + 0
+		formatString: #,0
+		displayFolder: KPI
+
+	measure 'Critical Short Qty' =
+			CALCULATE ( SUM ( Requirements[ShortQty] ), Requirements[Status] = "Critical" ) + 0
+		formatString: #,0
+		displayFolder: KPI
+
+	measure 'Critical Lines' =
+			CALCULATE ( COUNTROWS ( Requirements ), Requirements[Status] = "Critical" ) + 0
+		formatString: #,0
+		displayFolder: KPI
+
+	measure 'At Risk Short Qty' =
+			CALCULATE ( SUM ( Requirements[ShortQty] ), Requirements[Status] = "At Risk" ) + 0
+		formatString: #,0
+		displayFolder: KPI
+
+	measure 'At Risk Lines' =
+			CALCULATE ( COUNTROWS ( Requirements ), Requirements[Status] = "At Risk" ) + 0
+		formatString: #,0
+		displayFolder: KPI
+
+	measure 'Shipped Not Credited Qty' =
+			SUM ( Requirements[ShippedNotCreditedQty] ) + 0
+		formatString: #,0
+		displayFolder: KPI
+
+	measure 'C1 Lines' =
+			CALCULATE ( COUNTROWS ( Requirements ), Requirements[C1Flag] = TRUE () ) + 0
+		formatString: #,0
+		displayFolder: KPI
+
+	measure 'Raw Material Risk Qty' =
+			CALCULATE ( SUM ( Requirements[OpenQty] ), Requirements[R8Flag] = TRUE () ) + 0
+		formatString: #,0
+		displayFolder: KPI
+
+	measure 'Readiness Unknown Lines' =
+			CALCULATE ( COUNTROWS ( Requirements ), Requirements[ReadyState] = "Unknown", Requirements[OpenQty] > 0 ) + 0
+		formatString: #,0
+		displayFolder: KPI
+
+	measure 'Next 12 Weeks Qty' =
+			VAR d = MAX ( RunInfo[AsOfDate] ) RETURN CALCULATE ( SUM ( Requirements[OpenQty] ), Requirements[ReqShipDate] >= d, Requirements[ReqShipDate] <= d + 84 ) + 0
+		formatString: #,0
+		displayFolder: KPI
+
+	measure 'Snapshot Past Due Qty' =
+			SUM ( BacklogSnapshot[PastDueQty] )
+		formatString: #,0
+		displayFolder: Trend
+
+	measure 'Past Due Prior Snapshot' =
+			VAR asof = MAX ( RunInfo[AsOfDate] )
+			VAR prev = CALCULATE ( MAX ( BacklogSnapshot[SnapshotDate] ), REMOVEFILTERS ( BacklogSnapshot ), BacklogSnapshot[SnapshotDate] < asof )
+			RETURN CALCULATE ( SUM ( BacklogSnapshot[PastDueQty] ), REMOVEFILTERS ( BacklogSnapshot ), BacklogSnapshot[SnapshotDate] = prev )
+		formatString: #,0
+		displayFolder: Trend
+
+	measure 'Past Due Change %' =
+			DIVIDE ( [Past Due Qty] - [Past Due Prior Snapshot], [Past Due Prior Snapshot] )
+		formatString: +0.0%;-0.0%;0.0%
+		displayFolder: Trend
+
+	measure 'Engine Lines' =
+			VAR s = SELECTEDVALUE ( Requirements[Status] ) RETURN COUNTROWS ( FILTER ( ALL ( EngineCheck ), EngineCheck[Status] = s ) ) + 0
+		formatString: #,0
+		displayFolder: Data health
+
+	measure 'Engine Open Qty' =
+			VAR s = SELECTEDVALUE ( Requirements[Status] ) RETURN SUMX ( FILTER ( ALL ( EngineCheck ), EngineCheck[Status] = s ), EngineCheck[OpenQty] ) + 0
+		formatString: #,0
+		displayFolder: Data health
+
+	measure 'Engine Short Qty' =
+			VAR s = SELECTEDVALUE ( Requirements[Status] ) RETURN SUMX ( FILTER ( ALL ( EngineCheck ), EngineCheck[Status] = s ), EngineCheck[ShortQty] ) + 0
+		formatString: #,0
+		displayFolder: Data health
+
+	measure 'Mismatch Lines' =
+			CALCULATE ( COUNTROWS ( Requirements ), Requirements[MatchesEngine] = FALSE () ) + 0
+		formatString: #,0
+		displayFolder: Data health
+
+	measure 'Open Exceptions' =
+			CALCULATE ( COUNTROWS ( Exceptions ), Exceptions[IsOpen] = TRUE () ) + 0
+		formatString: #,0
+		displayFolder: Exceptions
+
+	measure 'Lang' =
+			SELECTEDVALUE ( Language[Code], "EN" )
+		displayFolder: Text
+
+	measure 'T Title' =
+			VAR k = "rpt_title"
+			RETURN IF ( [Lang] = "ES", LOOKUPVALUE ( Translations[ES], Translations[Key], k ), LOOKUPVALUE ( Translations[EN], Translations[Key], k ) )
+		displayFolder: Text
+
+	measure 'T Past Due' =
+			VAR k = "kpi_pd"
+			RETURN IF ( [Lang] = "ES", LOOKUPVALUE ( Translations[ES], Translations[Key], k ), LOOKUPVALUE ( Translations[EN], Translations[Key], k ) )
+		displayFolder: Text
+
+	measure 'T True Backlog' =
+			VAR k = "kpi_tb"
+			RETURN IF ( [Lang] = "ES", LOOKUPVALUE ( Translations[ES], Translations[Key], k ), LOOKUPVALUE ( Translations[EN], Translations[Key], k ) )
+		displayFolder: Text
+
+	measure 'T Critical' =
+			VAR k = "kpi_cr"
+			RETURN IF ( [Lang] = "ES", LOOKUPVALUE ( Translations[ES], Translations[Key], k ), LOOKUPVALUE ( Translations[EN], Translations[Key], k ) )
+		displayFolder: Text
+
+	measure 'T At Risk' =
+			VAR k = "kpi_ar"
+			RETURN IF ( [Lang] = "ES", LOOKUPVALUE ( Translations[ES], Translations[Key], k ), LOOKUPVALUE ( Translations[EN], Translations[Key], k ) )
+		displayFolder: Text
+
+	measure 'T Not Credited' =
+			VAR k = "kpi_c1"
+			RETURN IF ( [Lang] = "ES", LOOKUPVALUE ( Translations[ES], Translations[Key], k ), LOOKUPVALUE ( Translations[EN], Translations[Key], k ) )
+		displayFolder: Text
+
+	measure 'T Next Trucks' =
+			VAR k = "ttl_trucks"
+			RETURN IF ( [Lang] = "ES", LOOKUPVALUE ( Translations[ES], Translations[Key], k ), LOOKUPVALUE ( Translations[EN], Translations[Key], k ) )
+		displayFolder: Text
+
+	measure 'T Aging' =
+			VAR k = "ttl_aging"
+			RETURN IF ( [Lang] = "ES", LOOKUPVALUE ( Translations[ES], Translations[Key], k ), LOOKUPVALUE ( Translations[EN], Translations[Key], k ) )
+		displayFolder: Text
+
+	measure 'T Trend' =
+			VAR k = "ttl_trend"
+			RETURN IF ( [Lang] = "ES", LOOKUPVALUE ( Translations[ES], Translations[Key], k ), LOOKUPVALUE ( Translations[EN], Translations[Key], k ) )
+		displayFolder: Text
+
+	measure 'T Exceptions' =
+			VAR k = "ttl_ex"
+			RETURN IF ( [Lang] = "ES", LOOKUPVALUE ( Translations[ES], Translations[Key], k ), LOOKUPVALUE ( Translations[EN], Translations[Key], k ) )
+		displayFolder: Text
+
+	measure 'T Lines' =
+			VAR k = "ttl_lines"
+			RETURN IF ( [Lang] = "ES", LOOKUPVALUE ( Translations[ES], Translations[Key], k ), LOOKUPVALUE ( Translations[EN], Translations[Key], k ) )
+		displayFolder: Text
+
+	measure 'T Health' =
+			VAR k = "ttl_health"
+			RETURN IF ( [Lang] = "ES", LOOKUPVALUE ( Translations[ES], Translations[Key], k ), LOOKUPVALUE ( Translations[EN], Translations[Key], k ) )
+		displayFolder: Text
+
+	measure 'T ShipTo' =
+			VAR k = "sl_shipto"
+			RETURN IF ( [Lang] = "ES", LOOKUPVALUE ( Translations[ES], Translations[Key], k ), LOOKUPVALUE ( Translations[EN], Translations[Key], k ) )
+		displayFolder: Text
+
+	measure 'T Part' =
+			VAR k = "sl_part"
+			RETURN IF ( [Lang] = "ES", LOOKUPVALUE ( Translations[ES], Translations[Key], k ), LOOKUPVALUE ( Translations[EN], Translations[Key], k ) )
+		displayFolder: Text
+
+	measure 'T Status' =
+			VAR k = "sl_status"
+			RETURN IF ( [Lang] = "ES", LOOKUPVALUE ( Translations[ES], Translations[Key], k ), LOOKUPVALUE ( Translations[EN], Translations[Key], k ) )
+		displayFolder: Text
+
+	measure 'T As Of' =
+			VAR lbl = IF ( [Lang] = "ES", LOOKUPVALUE ( Translations[ES], Translations[Key], "lbl_asof" ), LOOKUPVALUE ( Translations[EN], Translations[Key], "lbl_asof" ) )
+			RETURN lbl & " " & FORMAT ( MAX ( RunInfo[AsOfDate] ), "ddd mmm d, yyyy" ) & "  |  " & FORMAT ( [Lines], "#,0" ) & " PO lines  |  " & FORMAT ( [Open Exceptions], "#,0" ) & " open exceptions"
+		displayFolder: Text
+
+	measure 'KPI Sub Past Due' =
+			FORMAT ( [Past Due Lines], "#,0" ) & " lines  |  " & FORMAT ( [Missed Truck Not Yet Due Qty], "#,0" ) & " not yet due at Sub-Zero"
+		displayFolder: Text
+
+	measure 'KPI Sub True Backlog' =
+			"Sub-Zero shows " & FORMAT ( [SZ Past Due Qty], "#,0" ) & " past due"
+		displayFolder: Text
+
+	measure 'KPI Sub Critical' =
+			FORMAT ( [Critical Lines], "#,0" ) & " lines not ready"
+		displayFolder: Text
+
+	measure 'KPI Sub At Risk' =
+			FORMAT ( [At Risk Lines], "#,0" ) & " lines not ready"
+		displayFolder: Text
+
+	measure 'KPI Sub Not Credited' =
+			FORMAT ( [C1 Lines], "#,0" ) & " lines to clear with Sub-Zero"
+		displayFolder: Text
+
+	partition Requirements = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents(DataFolder & "input\requirements.csv"), [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    Cols = Table.SelectColumns(Promoted, {"Customer", "CustomerGroup", "CustomerPoNumber", "SalesOrder", "SalesOrderLine", "ReqKey", "StockCode", "StockDescription", "ShipToKey", "LineStatus", "ReadyState", "Notes", "DataNote", "MatchStatus", "OrderQty", "ShippedQty", "OpenQty", "CustomerOpenQty", "UnitPrice", "OrderLineDate"}, MissingField.UseNull),
+				    Blanks = Table.ReplaceValue(Cols, "", null, Replacer.ReplaceValue, {"OrderQty", "ShippedQty", "OpenQty", "CustomerOpenQty", "UnitPrice", "OrderLineDate", "ReadyState", "MatchStatus", "DataNote"}),
+				    Typed = Table.TransformColumnTypes(Blanks, {{"OrderQty", type number}, {"ShippedQty", type number}, {"OpenQty", type number}, {"CustomerOpenQty", type number}, {"UnitPrice", type number}, {"OrderLineDate", type date}}, "en-US"),
+				    Result = Table.SelectRows(Typed, each [LineStatus] <> "Cancelled")
+				in
+				    Result

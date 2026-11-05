@@ -1,0 +1,30 @@
+table FGInventory
+
+	column StockCode
+		dataType: string
+		summarizeBy: none
+		sourceColumn: StockCode
+
+	column Warehouse
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Warehouse
+
+	column OnHandQty
+		dataType: double
+		formatString: #,0
+		summarizeBy: sum
+		sourceColumn: OnHandQty
+
+	partition FGInventory = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents(DataFolder & "input\fg_inventory.csv"), [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    Cols = Table.SelectColumns(Promoted, {"StockCode", "Warehouse", "OnHandQty"}, MissingField.UseNull),
+				    Blanks = Table.ReplaceValue(Cols, "", null, Replacer.ReplaceValue, {"OnHandQty"}),
+				    Typed = Table.TransformColumnTypes(Blanks, {{"OnHandQty", type number}}, "en-US"),
+				    Result = Typed
+				in
+				    Result

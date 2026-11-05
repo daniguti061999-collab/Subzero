@@ -1,0 +1,5 @@
+expression DataFolder = "C:\SZW_Backlog_Monitor\Data\" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+	annotation PBI_ResultType = Text
+
+expression AsOfOverride = "2026-10-28" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=false]
+	annotation PBI_ResultType = Text

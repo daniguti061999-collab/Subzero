@@ -1,0 +1,468 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.4.0/schema.json",
+  "name": "tblLines",
+  "position": {
+    "x": 12,
+    "y": 80,
+    "z": 9000,
+    "width": 1256,
+    "height": 608,
+    "tabOrder": 9000
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Requirements"
+                    }
+                  },
+                  "Property": "Status"
+                }
+              },
+              "queryRef": "Requirements.Status",
+              "nativeQueryRef": "Status",
+              "displayName": "Status"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "ShipToSchedule"
+                    }
+                  },
+                  "Property": "ShipToName"
+                }
+              },
+              "queryRef": "ShipToSchedule.ShipToName",
+              "nativeQueryRef": "ShipToName",
+              "displayName": "Ship-to"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Requirements"
+                    }
+                  },
+                  "Property": "StockCode"
+                }
+              },
+              "queryRef": "Requirements.StockCode",
+              "nativeQueryRef": "StockCode",
+              "displayName": "Part"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Requirements"
+                    }
+                  },
+                  "Property": "StockDescription"
+                }
+              },
+              "queryRef": "Requirements.StockDescription",
+              "nativeQueryRef": "StockDescription",
+              "displayName": "Description"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Requirements"
+                    }
+                  },
+                  "Property": "ReqKey"
+                }
+              },
+              "queryRef": "Requirements.ReqKey",
+              "nativeQueryRef": "ReqKey",
+              "displayName": "PO line"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Requirements"
+                    }
+                  },
+                  "Property": "OrderLineDate"
+                }
+              },
+              "queryRef": "Requirements.OrderLineDate",
+              "nativeQueryRef": "OrderLineDate",
+              "displayName": "Sub-Zero due"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Requirements"
+                    }
+                  },
+                  "Property": "ReqShipDate"
+                }
+              },
+              "queryRef": "Requirements.ReqShipDate",
+              "nativeQueryRef": "ReqShipDate",
+              "displayName": "Truck date"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Requirements"
+                    }
+                  },
+                  "Property": "Truck"
+                }
+              },
+              "queryRef": "Requirements.Truck",
+              "nativeQueryRef": "Truck",
+              "displayName": "Truck"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Requirements"
+                    }
+                  },
+                  "Property": "ReadyBy"
+                }
+              },
+              "queryRef": "Requirements.ReadyBy",
+              "nativeQueryRef": "ReadyBy",
+              "displayName": "Ready by"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Requirements"
+                    }
+                  },
+                  "Property": "CustomerOpenQty"
+                }
+              },
+              "queryRef": "Requirements.CustomerOpenQty",
+              "nativeQueryRef": "CustomerOpenQty",
+              "displayName": "Sub-Zero open"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Requirements"
+                    }
+                  },
+                  "Property": "OpenQty"
+                }
+              },
+              "queryRef": "Requirements.OpenQty",
+              "nativeQueryRef": "OpenQty",
+              "displayName": "Mills open"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Requirements"
+                    }
+                  },
+                  "Property": "ShortQty"
+                }
+              },
+              "queryRef": "Requirements.ShortQty",
+              "nativeQueryRef": "ShortQty",
+              "displayName": "Short"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Requirements"
+                    }
+                  },
+                  "Property": "DaysPastDue"
+                }
+              },
+              "queryRef": "Requirements.DaysPastDue",
+              "nativeQueryRef": "DaysPastDue",
+              "displayName": "Days late"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Requirements"
+                    }
+                  },
+                  "Property": "ShippedNotCreditedQty"
+                }
+              },
+              "queryRef": "Requirements.ShippedNotCreditedQty",
+              "nativeQueryRef": "ShippedNotCreditedQty",
+              "displayName": "Shipped, not credited"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Requirements"
+                    }
+                  },
+                  "Property": "ReadyState"
+                }
+              },
+              "queryRef": "Requirements.ReadyState",
+              "nativeQueryRef": "ReadyState",
+              "displayName": "Readiness"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Requirements"
+                    }
+                  },
+                  "Property": "Notes"
+                }
+              },
+              "queryRef": "Requirements.Notes",
+              "nativeQueryRef": "Notes",
+              "displayName": "Plan notes"
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Column": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "Requirements"
+                  }
+                },
+                "Property": "Status"
+              }
+            },
+            "direction": "Ascending"
+          },
+          {
+            "field": {
+              "Column": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "Requirements"
+                  }
+                },
+                "Property": "DaysPastDue"
+              }
+            },
+            "direction": "Descending"
+          }
+        ],
+        "isDefaultSort": false
+      }
+    },
+    "objects": {
+      "columnHeaders": [
+        {
+          "properties": {
+            "fontColor": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#FFFFFF'"
+                    }
+                  }
+                }
+              }
+            },
+            "backColor": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#002F6C'"
+                    }
+                  }
+                }
+              }
+            },
+            "fontSize": {
+              "expr": {
+                "Literal": {
+                  "Value": "8D"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "values": [
+        {
+          "properties": {
+            "fontSize": {
+              "expr": {
+                "Literal": {
+                  "Value": "8D"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "grid": [
+        {
+          "properties": {
+            "gridHorizontal": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "gridVertical": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "visualContainerObjects": {
+      "background": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "color": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#FFFFFF'"
+                    }
+                  }
+                }
+              }
+            },
+            "transparency": {
+              "expr": {
+                "Literal": {
+                  "Value": "0D"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "border": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "color": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#E5E7EB'"
+                    }
+                  }
+                }
+              }
+            },
+            "radius": {
+              "expr": {
+                "Literal": {
+                  "Value": "8D"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "dropShadow": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "visualHeader": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

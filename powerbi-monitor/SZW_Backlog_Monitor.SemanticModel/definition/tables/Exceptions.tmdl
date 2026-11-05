@@ -1,0 +1,117 @@
+table Exceptions
+
+	column ExceptionKey
+		dataType: string
+		summarizeBy: none
+		sourceColumn: ExceptionKey
+
+	column RuleID
+		dataType: string
+		summarizeBy: none
+		sourceColumn: RuleID
+
+	column Severity
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Severity
+
+	column Status
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Status
+
+	column Part
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Part
+
+	column Customer
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Customer
+
+	column ShipTo
+		dataType: string
+		summarizeBy: none
+		sourceColumn: ShipTo
+
+	column ReqKey
+		dataType: string
+		summarizeBy: none
+		sourceColumn: ReqKey
+
+	column Truck
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Truck
+
+	column Detail
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Detail
+
+	column ReqShipDate
+		dataType: dateTime
+		formatString: yyyy-mm-dd
+		summarizeBy: none
+		sourceColumn: ReqShipDate
+
+	column FirstDetected
+		dataType: dateTime
+		formatString: yyyy-mm-dd
+		summarizeBy: none
+		sourceColumn: FirstDetected
+
+	column OpenQty
+		dataType: double
+		formatString: #,0
+		summarizeBy: sum
+		sourceColumn: OpenQty
+
+	column ShortQty
+		dataType: double
+		formatString: #,0
+		summarizeBy: sum
+		sourceColumn: ShortQty
+
+	column DaysPastDue
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: DaysPastDue
+
+	column Owners
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Owners
+
+	column RuleDescription
+		dataType: string
+		summarizeBy: none
+		sourceColumn: RuleDescription
+
+	column IsOpen
+		dataType: boolean
+		summarizeBy: none
+		sourceColumn: IsOpen
+
+	partition Exceptions = m
+		mode: import
+		source =
+				let
+				    // v0.1 reads the agent's exception register; production reads the SharePoint list SZW_Exceptions
+				    Source = Csv.Document(File.Contents(DataFolder & "output\exceptions_register.csv"), [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    Blanks = Table.ReplaceValue(Promoted, "", null, Replacer.ReplaceValue, {"ReqShipDate", "FirstDetected", "OpenQty", "ShortQty", "DaysPastDue"}),
+				    Typed = Table.TransformColumnTypes(Blanks, {{"ReqShipDate", type date}, {"FirstDetected", type date}, {"OpenQty", type number}, {"ShortQty", type number}, {"DaysPastDue", Int64.Type}}, "en-US"),
+				    Routing = Table.PromoteHeaders(Csv.Document(File.Contents(DataFolder & "input\SZW_Routing.csv"), [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]), [PromoteAllScalars = true]),
+				    People = [#"cnixon@millsproducts.com" = "Celia", #"jzacarias@millsproducts.com" = "JC", #"twilcox@millsproducts.com" = "Tiffany",
+				              #"bjhonson@millsproducts.com" = "Brian", #"rrandolph@millsproducts.com" = "Robert", #"rpadron@millsproducts.com" = "Ricardo",
+				              #"tsledge@millsproducts.com" = "Tonya", #"mmcmillin@millsproducts.com" = "Matt", #"dgutierrez@millsproducts.com" = "Daniel"],
+				    Joined = Table.NestedJoin(Typed, {"RuleID"}, Routing, {"RuleID"}, "R", JoinKind.LeftOuter),
+				    Expanded = Table.ExpandTableColumn(Joined, "R", {"Description", "NotifyEmails"}, {"RuleDescription", "NotifyEmails"}),
+				    Owners = Table.AddColumn(Expanded, "Owners", each Text.Combine(List.Transform(List.Select(Text.Split([NotifyEmails] ?? "", ";"), each _ <> ""), each Record.FieldOrDefault(People, Text.Lower(Text.Trim(_)), _)), ", "), type text),
+				    IsOpen = Table.AddColumn(Owners, "IsOpen", each List.Contains({"New", "Acknowledged", "Recovery planned"}, [Status]), type logical),
+				    Result = Table.SelectColumns(IsOpen, {"ExceptionKey", "RuleID", "Severity", "Status", "Part", "Customer", "ShipTo", "ReqKey", "Truck", "Detail", "ReqShipDate", "FirstDetected", "OpenQty", "ShortQty", "DaysPastDue", "Owners", "RuleDescription", "IsOpen"})
+				in
+				    Result

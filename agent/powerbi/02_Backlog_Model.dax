@@ -1,0 +1,132 @@
+// =====================================================================
+// Sub-Zero/Wolf Backlog — DAX (same logic as engine/szw_agent.py; keep them in sync)
+// Relationships:
+//   Requirements[ShipToKey]  (*) -> ShipToSchedule[ShipToKey] (1)
+//   Shipments[ReqKey]        (*) -> Requirements[ReqKey]      (1)
+// No relationship needed for FGInventory, RunInfo or BacklogSnapshot.
+// =====================================================================
+
+// ---------------- Calculated columns on Requirements ----------------
+// Paste each into Table tools > New column.
+
+ReqShipDate =
+// Truck departure that meets the date on the order line.
+// DateBasis "D": the line date is the delivery date -> back off the transit days first.
+VAR lineDate = Requirements[OrderLineDate]
+VAR wd       = RELATED ( ShipToSchedule[TruckWeekday] )          // 1 = Mon ... 7 = Sun
+VAR transit  = RELATED ( ShipToSchedule[TransitCalendarDays] )
+VAR basis    = RELATED ( ShipToSchedule[DateBasis] )
+VAR latest   = IF ( basis = "D", lineDate - transit, lineDate )
+RETURN
+    IF ( ISBLANK ( wd ), lineDate, latest - MOD ( WEEKDAY ( latest, 2 ) - wd, 7 ) )
+// Set the column data type to Date.
+
+Truck =
+VAR wd = RELATED ( ShipToSchedule[TruckWeekday] )
+RETURN IF ( ISBLANK ( wd ), BLANK (), FORMAT ( DATE ( 2024, 1, wd ), "ddd" ) & " truck" )   // 2024-01-01 was a Monday
+
+NextTruck1 =
+VAR asof = MAX ( RunInfo[AsOfDate] )
+VAR wd   = RELATED ( ShipToSchedule[TruckWeekday] )
+RETURN IF ( ISBLANK ( wd ), asof + 1, asof + MOD ( wd - WEEKDAY ( asof, 2 ), 7 ) )
+// After the loading cutoff on a truck day, the agent should treat next week's truck as the next one:
+// handled by running the 6 PM run with IncludeTodayTruck = false (see flow spec), or add a cutoff hour here.
+
+NextTruck2 = Requirements[NextTruck1] + 7
+
+FGAvailable =
+VAR p = Requirements[StockCode]
+RETURN
+    CALCULATE ( SUM ( FGInventory[OnHandQty] ),
+        REMOVEFILTERS ( Requirements ),
+        FGInventory[StockCode] = p,
+        NOT FGInventory[Warehouse] IN { "QH" } )                     // quality-hold warehouses - VERIFY code
+    + 0
+
+CumOpenByPart =
+VAR p = Requirements[StockCode]
+VAR d = Requirements[ReqShipDate]
+VAR k = Requirements[ReqKey]
+RETURN
+    SUMX (
+        FILTER ( ALL ( Requirements ),
+            Requirements[StockCode] = p
+                && ( Requirements[ReqShipDate] < d
+                     || ( Requirements[ReqShipDate] = d && Requirements[ReqKey] <= k ) ) ),
+        Requirements[OpenQty] )
+
+ShortQty =
+MIN ( Requirements[OpenQty], MAX ( 0, Requirements[CumOpenByPart] - Requirements[FGAvailable] ) )
+
+DaysPastDue =
+VAR asof = MAX ( RunInfo[AsOfDate] )
+RETURN IF ( Requirements[OpenQty] > 0 && Requirements[ReqShipDate] < asof, INT ( asof - Requirements[ReqShipDate] ), 0 )
+
+AgingBucket =
+SWITCH ( TRUE (),
+    Requirements[DaysPastDue] = 0, "Not past due",
+    Requirements[DaysPastDue] <= 2, "1-2 days",
+    Requirements[DaysPastDue] <= 7, "3-7 days",
+    Requirements[DaysPastDue] <= 14, "8-14 days",
+    "15+ days" )
+
+Status =
+VAR asof = MAX ( RunInfo[AsOfDate] )
+RETURN
+    SWITCH ( TRUE (),
+        Requirements[OpenQty] <= 0, "Complete",
+        ISBLANK ( Requirements[ReqShipDate] ), "Data Issue",
+        Requirements[ReqShipDate] < asof, "Past Due",
+        Requirements[ShortQty] > 0 && Requirements[ReqShipDate] <= Requirements[NextTruck1], "Critical",
+        Requirements[ShortQty] > 0 && Requirements[ReqShipDate] <= Requirements[NextTruck2], "At Risk",
+        "On Track" )
+
+StatusOrder =
+SWITCH ( Requirements[Status], "Past Due", 1, "Critical", 2, "At Risk", 3, "Data Issue", 4, "On Track", 5, 6 )
+// Sort Status by StatusOrder.
+
+// ---------------- Measures (DAX query view: paste the DEFINE block and "Update model") ----------------
+DEFINE
+    MEASURE Requirements[As Of Date] = MAX ( RunInfo[AsOfDate] )
+    MEASURE Requirements[Open Qty] = SUM ( Requirements[OpenQty] )
+    MEASURE Requirements[Past Due Qty] = CALCULATE ( [Open Qty], Requirements[Status] = "Past Due" )
+    MEASURE Requirements[Past Due $] =
+        SUMX ( FILTER ( Requirements, Requirements[Status] = "Past Due" ), Requirements[OpenQty] * Requirements[UnitPrice] )
+    MEASURE Requirements[Past Due Lines] = CALCULATE ( COUNTROWS ( Requirements ), Requirements[Status] = "Past Due" )
+    MEASURE Requirements[Ships Today Qty] =
+        VAR d = [As Of Date] RETURN CALCULATE ( [Open Qty], Requirements[ReqShipDate] = d )
+    MEASURE Requirements[Next 7 Days Qty] =
+        VAR d = [As Of Date] RETURN CALCULATE ( [Open Qty], Requirements[ReqShipDate] > d, Requirements[ReqShipDate] <= d + 7 )
+    MEASURE Requirements[Next 12 Weeks Qty] =
+        VAR d = [As Of Date] RETURN CALCULATE ( [Open Qty], Requirements[ReqShipDate] > d, Requirements[ReqShipDate] <= d + 84 )
+    MEASURE Requirements[Critical Short Qty] = CALCULATE ( SUM ( Requirements[ShortQty] ), Requirements[Status] = "Critical" )
+    MEASURE Requirements[At Risk Short Qty] = CALCULATE ( SUM ( Requirements[ShortQty] ), Requirements[Status] = "At Risk" )
+    MEASURE Requirements[Shipped Today Qty] =
+        VAR d = [As Of Date] RETURN CALCULATE ( SUM ( Shipments[ShipQty] ), Shipments[ShipDate] = d )
+    MEASURE Requirements[Past Due Prior Snapshot] =
+        VAR asof = [As Of Date]
+        VAR prev = CALCULATE ( MAX ( BacklogSnapshot[SnapshotDate] ), BacklogSnapshot[SnapshotDate] < asof )
+        RETURN CALCULATE ( SUM ( BacklogSnapshot[PastDueQty] ), BacklogSnapshot[SnapshotDate] = prev )
+    MEASURE Requirements[Past Due Change %] =
+        DIVIDE ( [Past Due Qty] - [Past Due Prior Snapshot], [Past Due Prior Snapshot] )
+    MEASURE Requirements[Data Refreshed] = "Data as of " & FORMAT ( MAX ( RunInfo[RefreshedAt] ), "yyyy-mm-dd hh:nn" )
+
+// Check (must match engine/sample_output when the model runs on the sample CSVs)
+EVALUATE
+SUMMARIZECOLUMNS (
+    Requirements[Status],
+    "Lines", COUNTROWS ( Requirements ),
+    "Open", [Open Qty],
+    "Short", SUM ( Requirements[ShortQty] )
+)
+
+// ---------------- DAX query used by flow F2 (Power BI > Run a query against a dataset) ----------------
+// EVALUATE
+// SELECTCOLUMNS (
+//     FILTER ( Requirements, Requirements[Status] IN { "Past Due", "Critical", "At Risk", "Data Issue" } ),
+//     "ReqKey", Requirements[ReqKey], "Customer", Requirements[Customer], "ShipTo", Requirements[ShipToKey],
+//     "Part", Requirements[StockCode], "ReqShipDate", FORMAT ( Requirements[ReqShipDate], "yyyy-mm-dd" ),
+//     "Truck", Requirements[Truck], "OpenQty", Requirements[OpenQty], "ShortQty", Requirements[ShortQty],
+//     "DaysPastDue", Requirements[DaysPastDue], "FGAvailable", Requirements[FGAvailable],
+//     "Status", Requirements[Status], "RefreshedAt", FORMAT ( MAX ( RunInfo[RefreshedAt] ), "yyyy-mm-dd hh:nn" )
+// )

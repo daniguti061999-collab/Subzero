@@ -1,0 +1,9 @@
+Customer,CustomerGroup,CustomerPoNumber,SalesOrder,SalesOrderLine,ReqKey,StockCode,StockDescription,Warehouse,ShipToKey,OrderQty,ShippedQty,OpenQty,OrderLineDate,OrderDate,UnitPrice,OrderStatus,LineStatus
+SZW001,Sub-Zero/Wolf,PO-5501,074120,1,074120|1,SZ-1001,Handle bracket (fictional),FG01,SZ-A,500,350,150,2026-10-29,2026-09-01,4.85,1,Open
+SZW003,Sub-Zero/Wolf,PO-5488,074098,1,074098|1,WF-3150,Trim rail (fictional),FG01,SZ-C,300,0,300,2026-10-26,2026-08-25,12.40,1,Open
+SZW002,Sub-Zero/Wolf,PO-5512,074133,2,074133|2,SZ-2002,Door handle (fictional),FG01,SZ-B,1000,0,1000,2026-11-05,2026-09-08,9.20,1,Open
+SZW003,Sub-Zero/Wolf,PO-5515,074140,1,074140|1,SZ-2002,Door handle (fictional),FG01,SZ-C,500,0,500,2026-11-02,2026-09-10,9.20,1,Open
+SZW001,Sub-Zero/Wolf,PO-5402,073950,3,073950|3,SZ-4410,End cap (fictional),FG01,SZ-A,120,40,80,2026-10-15,2026-08-12,7.10,1,Open
+SZW001,Sub-Zero/Wolf,PO-5530,074152,1,074152|1,WF-5025,Bezel (fictional),FG01,SZ-A,400,0,400,2026-11-12,2026-09-15,3.60,1,Open
+SZW002,Sub-Zero/Wolf,PO-5533,074160,1,074160|1,SZ-7700,Spacer (fictional),FG01,SZ-ZZ,100,0,100,2026-11-20,2026-09-20,2.10,1,Open
+SZW001,Sub-Zero/Wolf,PO-5490,074101,1,074101|1,SZ-1001,Handle bracket (fictional),FG01,SZ-A,200,0,200,2026-10-22,2026-08-30,4.85,\,Cancelled

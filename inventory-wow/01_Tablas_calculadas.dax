@@ -1,0 +1,95 @@
+// =====================================================================
+// Mills Products — Variación semanal de inventario
+// 01_Tablas_calculadas.dax
+// Crear cada tabla en el modelo semántico: Modelado > Nueva tabla,
+// pegar la fórmula (sin los comentarios) y confirmar.
+// Supuesto de nombres: tabla de snapshots = InventorySnapshot (ver guía, sección 2).
+// =====================================================================
+
+
+// ---------------------------------------------------------------------
+// 1) Week Selector — tabla DESCONECTADA (sin relaciones) para el slicer de semana.
+//    Así la tendencia de 13 semanas no se reduce a un solo punto.
+// ---------------------------------------------------------------------
+Week Selector =
+DISTINCT (
+    SELECTCOLUMNS ( InventorySnapshot, "SnapshotDate", InventorySnapshot[SnapshotDate] )
+)
+
+
+// ---------------------------------------------------------------------
+// 2) Language — alimenta el botón EN / ES (slicer de botones, selección única).
+//    Sin relaciones, excepto la de WoW Columns (paso 4).
+// ---------------------------------------------------------------------
+Language =
+DATATABLE (
+    "Code", STRING,
+    "Order", INTEGER,
+    {
+        { "ES", 1 },
+        { "EN", 2 }
+    }
+)
+
+
+// ---------------------------------------------------------------------
+// 3) Translations — todos los textos del reporte. Agrega filas aquí,
+//    no cambies las medidas.
+// ---------------------------------------------------------------------
+Translations =
+DATATABLE (
+    "Key", STRING,
+    "ES", STRING,
+    "EN", STRING,
+    {
+        { "rpt_title",    "Variación semanal del costo de inventario",          "Weekly inventory cost change" },
+        { "kpi_cw",       "Inventario semana actual",                           "Current week inventory" },
+        { "kpi_pw",       "Inventario semana anterior",                         "Prior week inventory" },
+        { "kpi_delta",    "Variación $",                                        "Change $" },
+        { "kpi_qty_eff",  "Efecto cantidad",                                    "Quantity effect" },
+        { "kpi_cost_eff", "Efecto costo",                                       "Cost effect" },
+        { "ttl_site",     "Variación por Site",                                 "Change by site" },
+        { "ttl_gwh",      "Variación por GroupedWH",                            "Change by grouped WH" },
+        { "ttl_tree",     "¿Qué explica la variación?",                         "What explains the change?" },
+        { "ttl_up",       "Top 15 aumentos por StockCode",                      "Top 15 increases by stock code" },
+        { "ttl_down",     "Top 15 disminuciones por StockCode",                 "Top 15 decreases by stock code" },
+        { "ttl_matrix",   "Detalle: Site > GroupedWH > Warehouse > StockCode",  "Detail: site > grouped WH > warehouse > stock code" },
+        { "ttl_trend",    "Costo de inventario, últimas 13 semanas",            "Inventory cost, last 13 weeks" },
+        { "lbl_week",     "Semana",                                             "Week" },
+        { "lbl_vs",       "vs.",                                                "vs." },
+        { "type_new",     "Nuevo",                                              "New" },
+        { "type_removed", "Eliminado",                                          "Removed" },
+        { "type_qty",     "Cantidad",                                           "Quantity" },
+        { "type_cost",    "Costo",                                              "Cost" },
+        { "type_none",    "Sin cambio",                                         "No change" }
+    }
+)
+
+
+// ---------------------------------------------------------------------
+// 4) WoW Columns — columnas bilingües de la matriz (parámetro de campos).
+//    a) Primero corre 02_Medidas_WoW.dax (las medidas deben existir).
+//    b) Modelado > Nuevo parámetro > Campos: agrega WoW Value PW, WoW Value CW,
+//       WoW Delta, WoW Delta %, WoW Qty Effect, WoW Cost Effect, WoW Change Type.
+//       Nómbralo "WoW Columns".
+//    c) Reemplaza la fórmula generada por la de abajo (agrega la 4.ª columna de idioma).
+//    d) Renombra la columna "Value4" a "Lang".
+//    e) Relación: WoW Columns[Lang] (*) -> Language[Code] (1), dirección única.
+// ---------------------------------------------------------------------
+WoW Columns =
+{
+    ( "Inventario sem. anterior", NAMEOF ( InventorySnapshot[WoW Value PW] ),    1, "ES" ),
+    ( "Inventario sem. actual",   NAMEOF ( InventorySnapshot[WoW Value CW] ),    2, "ES" ),
+    ( "Variación $",              NAMEOF ( InventorySnapshot[WoW Delta] ),       3, "ES" ),
+    ( "Variación %",              NAMEOF ( InventorySnapshot[WoW Delta %] ),     4, "ES" ),
+    ( "Efecto cantidad",          NAMEOF ( InventorySnapshot[WoW Qty Effect] ),  5, "ES" ),
+    ( "Efecto costo",             NAMEOF ( InventorySnapshot[WoW Cost Effect] ), 6, "ES" ),
+    ( "Causa principal",          NAMEOF ( InventorySnapshot[WoW Change Type] ), 7, "ES" ),
+    ( "Prior week value",         NAMEOF ( InventorySnapshot[WoW Value PW] ),    11, "EN" ),
+    ( "Current week value",       NAMEOF ( InventorySnapshot[WoW Value CW] ),    12, "EN" ),
+    ( "Change $",                 NAMEOF ( InventorySnapshot[WoW Delta] ),       13, "EN" ),
+    ( "Change %",                 NAMEOF ( InventorySnapshot[WoW Delta %] ),     14, "EN" ),
+    ( "Quantity effect",          NAMEOF ( InventorySnapshot[WoW Qty Effect] ),  15, "EN" ),
+    ( "Cost effect",              NAMEOF ( InventorySnapshot[WoW Cost Effect] ), 16, "EN" ),
+    ( "Main driver",              NAMEOF ( InventorySnapshot[WoW Change Type] ), 17, "EN" )
+}

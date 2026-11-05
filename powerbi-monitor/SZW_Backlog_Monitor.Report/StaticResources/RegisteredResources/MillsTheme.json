@@ -1,0 +1,59 @@
+{
+  "name": "Mills Products - Inventario",
+  "dataColors": [
+    "#002F6C",
+    "#1D4E89",
+    "#4A90C2",
+    "#8FB8DE",
+    "#F2A541",
+    "#6B7280",
+    "#2A9D8F",
+    "#B5838D"
+  ],
+  "background": "#FFFFFF",
+  "foreground": "#1F2937",
+  "tableAccent": "#1D4E89",
+  "good": "#1E8449",
+  "neutral": "#9CA3AF",
+  "bad": "#C0392B",
+  "maximum": "#C0392B",
+  "center": "#F3F4F6",
+  "minimum": "#1E8449",
+  "textClasses": {
+    "callout": { "fontSize": 26, "fontFace": "Segoe UI Semibold", "color": "#002F6C" },
+    "title": { "fontSize": 12, "fontFace": "Segoe UI Semibold", "color": "#002F6C" },
+    "header": { "fontSize": 11, "fontFace": "Segoe UI Semibold", "color": "#002F6C" },
+    "label": { "fontSize": 10, "fontFace": "Segoe UI", "color": "#374151" }
+  },
+  "visualStyles": {
+    "*": {
+      "*": {
+        "background": [{ "show": true, "color": { "solid": { "color": "#FFFFFF" } }, "transparency": 0 }],
+        "border": [{ "show": true, "color": { "solid": { "color": "#E5E7EB" } }, "radius": 8 }],
+        "dropShadow": [{ "show": false }],
+        "visualHeader": [{ "show": true }],
+        "title": [{ "show": true, "fontColor": { "solid": { "color": "#002F6C" } }, "fontSize": 12, "fontFamily": "Segoe UI Semibold" }]
+      }
+    },
+    "page": {
+      "*": {
+        "background": [{ "color": { "solid": { "color": "#F4F6F9" } }, "transparency": 0 }],
+        "outspace": [{ "color": { "solid": { "color": "#F4F6F9" } } }]
+      }
+    },
+    "tableEx": {
+      "*": {
+        "grid": [{ "gridHorizontal": true, "gridHorizontalColor": { "solid": { "color": "#EEF1F5" } }, "gridVertical": false }],
+        "columnHeaders": [{ "fontColor": { "solid": { "color": "#FFFFFF" } }, "backColor": { "solid": { "color": "#002F6C" } } }]
+      }
+    },
+    "pivotTable": {
+      "*": {
+        "columnHeaders": [{ "fontColor": { "solid": { "color": "#FFFFFF" } }, "backColor": { "solid": { "color": "#002F6C" } } }],
+        "rowHeaders": [{ "fontColor": { "solid": { "color": "#1F2937" } } }],
+        "subTotals": [{ "fontColor": { "solid": { "color": "#002F6C" } }, "backColor": { "solid": { "color": "#EEF1F5" } } }],
+        "grid": [{ "gridHorizontal": true, "gridHorizontalColor": { "solid": { "color": "#EEF1F5" } }, "gridVertical": false }]
+      }
+    }
+  }
+}

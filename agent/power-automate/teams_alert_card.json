@@ -1,0 +1,31 @@
+{
+  "type": "AdaptiveCard",
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "version": "1.4",
+  "body": [
+    {
+      "type": "Container",
+      "style": "emphasis",
+      "items": [
+        { "type": "TextBlock", "text": "@{variables('Severity')} · @{variables('RuleID')} · @{items('Each_exception')?['[Part]']}", "weight": "Bolder", "size": "Medium", "color": "@{if(equals(variables('Severity'),'Critical'),'Attention','Warning')}", "wrap": true },
+        { "type": "TextBlock", "text": "Mills Products · Sub-Zero/Wolf shipment monitor", "isSubtle": true, "spacing": "None", "size": "Small" }
+      ]
+    },
+    { "type": "TextBlock", "text": "@{variables('Message')}", "wrap": true },
+    {
+      "type": "FactSet",
+      "facts": [
+        { "title": "SO line", "value": "@{items('Each_exception')?['[ReqKey]']}" },
+        { "title": "Truck", "value": "@{items('Each_exception')?['[ReqShipDate]']} @{items('Each_exception')?['[Truck]']}" },
+        { "title": "Open qty", "value": "@{items('Each_exception')?['[OpenQty]']}" },
+        { "title": "Short qty", "value": "@{items('Each_exception')?['[ShortQty]']}" },
+        { "title": "FG on hand", "value": "@{items('Each_exception')?['[FGAvailable]']}" },
+        { "title": "Days past due", "value": "@{items('Each_exception')?['[DaysPastDue]']}" }
+      ]
+    }
+  ],
+  "actions": [
+    { "type": "Action.OpenUrl", "title": "Open exception", "url": "@{body('Create_item')?['{Link}']}" },
+    { "type": "Action.OpenUrl", "title": "View in Power BI", "url": "<REPORT_URL>?filter=Requirements/ReqKey eq '@{items('Each_exception')?['[ReqKey]']}'" }
+  ]
+}
