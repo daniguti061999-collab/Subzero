@@ -1,0 +1,131 @@
+{
+  "id": "F3",
+  "name": "SZW - F3 Snapshots and Summaries",
+  "description": "Daily 6:30 AM ET Mon–Fri: saves a CSV snapshot to SharePoint, checks R4 backlog growth, sends daily digest email + Teams post. Mondays at 7:30 AM also includes the weekly OTD trend.",
+  "trigger": {
+    "type": "Recurrence",
+    "config": {
+      "daily": {
+        "frequency": "Week",
+        "interval": 1,
+        "schedule": {
+          "hours": ["6"],
+          "minutes": ["30"],
+          "weekDays": ["Monday","Tuesday","Wednesday","Thursday","Friday"]
+        },
+        "timeZone": "Eastern Standard Time"
+      }
+    }
+  },
+  "steps": [
+    {
+      "id": "1",
+      "name": "Query_Snapshot",
+      "type": "PowerBI.RunQueryAgainstDataset",
+      "workspaceId": "{{PBI_WORKSPACE_ID}}",
+      "datasetId": "{{PBI_DATASET_ID}}",
+      "dax": "EVALUATE SELECTCOLUMNS(FILTER(SUMMARIZECOLUMNS(Requirements[StockCode],Requirements[CustomerWarehouse],\"PastDueQty\",[Past Due Qty],\"CriticalQty\",[Critical Qty],\"AtRiskQty\",[At Risk Qty]),[PastDueQty]>0),\"SnapshotDate\",FORMAT(MAX(RunInfo[AsOfDate]),\"yyyy-mm-dd\"),\"StockCode\",Requirements[StockCode],\"CustomerWarehouse\",Requirements[CustomerWarehouse],\"PastDueQty\",[PastDueQty],\"CriticalQty\",[CriticalQty],\"AtRiskQty\",[AtRiskQty])"
+    },
+    {
+      "id": "2",
+      "name": "Query_KPIs",
+      "type": "PowerBI.RunQueryAgainstDataset",
+      "workspaceId": "{{PBI_WORKSPACE_ID}}",
+      "datasetId": "{{PBI_DATASET_ID}}",
+      "dax": "EVALUATE {ROW(\"PastDueQty\",[Past Due Qty],\"TrueBacklogQty\",[True Backlog Qty],\"CriticalQty\",[Critical Qty],\"AtRiskQty\",[At Risk Qty],\"ShipsTodayQty\",[Ships Today Qty],\"OTDPct\",[OTD %],\"AsOfDate\",FORMAT(MAX(RunInfo[AsOfDate]),\"yyyy-mm-dd\"))}"
+    },
+    {
+      "id": "3",
+      "name": "Create_CSV_Table",
+      "type": "Data.CreateCsvTable",
+      "input": "@body('Query_Snapshot')?['results']?[0]?['tables']?[0]?['rows']",
+      "note": "Remove [ ] brackets from column names using Select before this step"
+    },
+    {
+      "id": "4",
+      "name": "Save_Snapshot_File",
+      "type": "SharePoint.CreateFile",
+      "site": "{{SHAREPOINT_SITE_URL}}",
+      "library": "Shared Documents",
+      "folderPath": "SZW_Agent/Snapshots",
+      "fileName": "@{concat('snapshot_',formatDateTime(convertFromUtc(utcNow(),'Eastern Standard Time'),'yyyy-MM-dd'),'.csv')}",
+      "fileContent": "@body('Create_CSV_Table')"
+    },
+    {
+      "id": "5",
+      "name": "Get_Config_BacklogGrowthPct",
+      "type": "SharePoint.GetItems",
+      "site": "{{SHAREPOINT_SITE_URL}}",
+      "list": "SZW_Config",
+      "filterQuery": "Key eq 'BacklogGrowthPct'",
+      "top": 1
+    },
+    {
+      "id": "6",
+      "name": "Get_Yesterday_Snapshot",
+      "type": "SharePoint.GetFiles",
+      "site": "{{SHAREPOINT_SITE_URL}}",
+      "library": "Shared Documents",
+      "folder": "SZW_Agent/Snapshots",
+      "filterQuery": "Name eq '@{concat(\"snapshot_\",formatDateTime(addDays(convertFromUtc(utcNow(),\"Eastern Standard Time\"),-1),\"yyyy-MM-dd\"),\".csv\")}'"
+    },
+    {
+      "id": "7",
+      "name": "Condition_R4_BacklogGrowth",
+      "type": "Control.Condition",
+      "condition": "@greater(div(sub(body('Query_KPIs')?['results']?[0]?['tables']?[0]?['rows']?[0]?['[PastDueQty]'],variables('YesterdayPastDue')),variables('YesterdayPastDue')),float(first(body('Get_Config_BacklogGrowthPct')?['value'])?['Value']))",
+      "yes": [
+        {
+          "name": "Create_R4_Exception",
+          "type": "SharePoint.CreateItem",
+          "list": "SZW_Exceptions",
+          "fields": {
+            "RuleID": "R4",
+            "Status": "New",
+            "Notes": "Past-due backlog grew by more than BacklogGrowthPct threshold"
+          }
+        },
+        {
+          "name": "Notify_R4",
+          "note": "Email Robert Randolph (rrandolph@) and Ricardo Padron (rpadron@), CC Matt McMillin (mmcmillin@)"
+        }
+      ]
+    },
+    {
+      "id": "8",
+      "name": "Condition_MondayWeekly",
+      "type": "Control.Condition",
+      "condition": "@equals(dayOfWeek(convertFromUtc(utcNow(),'Eastern Standard Time')),1)",
+      "yes": [
+        {
+          "name": "Query_Weekly_Trend",
+          "type": "PowerBI.RunQueryAgainstDataset",
+          "dax": "EVALUATE TOPN(5,SUMMARIZECOLUMNS(Snapshots[SnapshotDate],\"PastDueQty\",[Past Due Qty]),Snapshots[SnapshotDate],0)"
+        }
+      ]
+    },
+    {
+      "id": "9",
+      "name": "Build_Digest_HTML",
+      "type": "Data.Compose",
+      "value": "@{concat('<h2>SZW Daily Backlog Summary — ',body('Query_KPIs')?['results']?[0]?['tables']?[0]?['rows']?[0]?['[AsOfDate]'],'</h2><table>','<tr><td>Past Due</td><td>',body('Query_KPIs')?['results']?[0]?['tables']?[0]?['rows']?[0]?['[PastDueQty]'],' units</td></tr>','<tr><td>True Backlog</td><td>',body('Query_KPIs')?['results']?[0]?['tables']?[0]?['rows']?[0]?['[TrueBacklogQty]'],' units</td></tr>','<tr><td>Critical</td><td>',body('Query_KPIs')?['results']?[0]?['tables']?[0]?['rows']?[0]?['[CriticalQty]'],' units</td></tr>','<tr><td>At Risk</td><td>',body('Query_KPIs')?['results']?[0]?['tables']?[0]?['rows']?[0]?['[AtRiskQty]'],' units</td></tr>','<tr><td>OTD</td><td>',body('Query_KPIs')?['results']?[0]?['tables']?[0]?['rows']?[0]?['[OTDPct]'],'%</td></tr>','</table>')}"
+    },
+    {
+      "id": "10",
+      "name": "Send_Digest_Email",
+      "type": "Office365Outlook.SendEmailV2",
+      "to": "{{DISTRIBUTION_LIST}}",
+      "note": "Distribution list: rrandolph@, rpadron@, cnixon@, jzacarias@, bjhonson@, twilcox@, dgutierrez@",
+      "subject": "@{concat('[SZW] Daily Backlog Summary — ',body('Query_KPIs')?['results']?[0]?['tables']?[0]?['rows']?[0]?['[AsOfDate]'])}",
+      "bodyHtml": "@outputs('Build_Digest_HTML')"
+    },
+    {
+      "id": "11",
+      "name": "Post_Teams_Daily_Summary",
+      "type": "Teams.PostMessage",
+      "channelId": "{{TEAMS_CHANNEL_SZW_ALERTS}}",
+      "message": "@{concat('📊 Daily summary: Past Due ',body('Query_KPIs')?['results']?[0]?['tables']?[0]?['rows']?[0]?['[PastDueQty]'],' · Critical ',body('Query_KPIs')?['results']?[0]?['tables']?[0]?['rows']?[0]?['[CriticalQty]'],' · OTD ',body('Query_KPIs')?['results']?[0]?['tables']?[0]?['rows']?[0]?['[OTDPct]'],'%')}"
+    }
+  ],
+  "connectors": ["Recurrence", "PowerBI", "SharePoint", "Office365Outlook", "Teams"]
+}

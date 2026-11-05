@@ -1,0 +1,193 @@
+{
+  "id": "F6",
+  "name": "SZW - F6 Shipment Inquiry Agent",
+  "description": "NEW: When an inquiry is submitted to SZW_InquiryQueue, checks FG inventory and the truck schedule in Power BI, posts an approval card to Celia/JC in Teams, and routes the confirmed order to Tonya for SYSPRO entry. Fully read-only on SYSPRO.",
+  "trigger": {
+    "type": "SharePoint.OnItemCreated",
+    "config": {
+      "site": "{{SHAREPOINT_SITE_URL}}",
+      "list": "SZW_InquiryQueue"
+    }
+  },
+  "sharePointListSchema_SZW_InquiryQueue": {
+    "columns": [
+      {"name": "Title", "type": "Auto", "notes": "Inquiry ID (auto-generated)"},
+      {"name": "RequestorName", "type": "Person", "notes": "Who submitted the inquiry"},
+      {"name": "StockCode", "type": "Text", "notes": "SYSPRO stock code e.g. 9054217"},
+      {"name": "RequestedQty", "type": "Number", "notes": "Units requested"},
+      {"name": "RequestedDate", "type": "Date", "notes": "Sub-Zero arrival due date"},
+      {"name": "CustomerWarehouse", "type": "Choice", "choices": ["WHS-10","WHS-22","WHS-23"], "notes": "Sub-Zero ship-to warehouse"},
+      {"name": "Priority", "type": "Choice", "choices": ["Standard","Urgent"], "notes": "Inquiry urgency"},
+      {"name": "Notes", "type": "MultilineText", "notes": "Free-text context from requestor"},
+      {"name": "Status", "type": "Choice", "choices": ["Pending","Under Review","Confirmed","Cannot Fulfill"], "default": "Pending"},
+      {"name": "RecommendedShipDate", "type": "Date", "notes": "Set by F6 — next truck on or before RequestedDate − 3 days"},
+      {"name": "FGAvailable", "type": "Number", "notes": "FG units available, set by F6 from PBI query"},
+      {"name": "ConfirmedBy", "type": "Person", "notes": "Celia or JC who tapped Confirm on the adaptive card"},
+      {"name": "SYSPROEntered", "type": "Boolean", "notes": "Tonya marks Yes when SO/schedule is keyed in SYSPRO"}
+    ]
+  },
+  "steps": [
+    {
+      "id": "1",
+      "name": "Trigger_New_Inquiry",
+      "note": "Captures StockCode, RequestedQty, RequestedDate, CustomerWarehouse, Priority from the new list item"
+    },
+    {
+      "id": "2",
+      "name": "Update_Status_UnderReview",
+      "type": "SharePoint.UpdateItem",
+      "site": "{{SHAREPOINT_SITE_URL}}",
+      "list": "SZW_InquiryQueue",
+      "id": "@triggerBody()?['ID']",
+      "fields": {
+        "Status": "Under Review"
+      }
+    },
+    {
+      "id": "3",
+      "name": "Query_FG_Availability",
+      "type": "PowerBI.RunQueryAgainstDataset",
+      "workspaceId": "{{PBI_WORKSPACE_ID}}",
+      "datasetId": "{{PBI_DATASET_ID}}",
+      "dax": "EVALUATE FILTER(SELECTCOLUMNS(SUMMARIZECOLUMNS(Requirements[StockCode],Requirements[CustomerWarehouse],\"FGAvail\",[FG Available],\"ShortQty\",[Short Qty],\"NextTruck1\",[Next Truck 1],\"NextTruck2\",[Next Truck 2],\"ReqShipDate\",[Req Ship Date]),\"StockCode\",Requirements[StockCode],\"CustomerWarehouse\",Requirements[CustomerWarehouse],\"FGAvail\",[FGAvail],\"ShortQty\",[ShortQty],\"NextTruck1\",[NextTruck1],\"NextTruck2\",[NextTruck2],\"ReqShipDate\",[ReqShipDate]),Requirements[StockCode]=\"@{triggerBody()?['StockCode']}\" && Requirements[CustomerWarehouse]=\"@{triggerBody()?['CustomerWarehouse']}\")"
+    },
+    {
+      "id": "4",
+      "name": "Compose_CanFill",
+      "value": "@greaterOrEquals(float(first(body('Query_FG_Availability')?['results']?[0]?['tables']?[0]?['rows'])?['[FGAvail]']),float(triggerBody()?['RequestedQty']))"
+    },
+    {
+      "id": "5",
+      "name": "Compose_ShipBy",
+      "value": "@addDays(triggerBody()?['RequestedDate'],-3)",
+      "note": "Sub-Zero arrival date minus 3 calendar days transit"
+    },
+    {
+      "id": "6",
+      "name": "Compose_TruckDate",
+      "value": "@first(body('Query_FG_Availability')?['results']?[0]?['tables']?[0]?['rows'])?['[NextTruck1]']",
+      "note": "Next scheduled truck date on or before ShipBy — PBI already computes this"
+    },
+    {
+      "id": "7",
+      "name": "Update_Inquiry_RecommendedDate",
+      "type": "SharePoint.UpdateItem",
+      "site": "{{SHAREPOINT_SITE_URL}}",
+      "list": "SZW_InquiryQueue",
+      "id": "@triggerBody()?['ID']",
+      "fields": {
+        "FGAvailable": "@float(first(body('Query_FG_Availability')?['results']?[0]?['tables']?[0]?['rows'])?['[FGAvail]'])",
+        "RecommendedShipDate": "@outputs('Compose_TruckDate')"
+      }
+    },
+    {
+      "id": "8",
+      "name": "Post_Approval_Card_And_Wait",
+      "type": "Teams.PostAdaptiveCardAndWaitForResponse",
+      "recipient": "cnixon@millsproducts.com;jzacarias@millsproducts.com",
+      "channelId": "{{TEAMS_CHANNEL_SZW_PLANNING}}",
+      "timeout": "PT4H",
+      "cardBody": {
+        "type": "AdaptiveCard",
+        "body": [
+          {"type":"TextBlock","text":"📦 Shipment Inquiry #@{triggerBody()?['ID']}","weight":"Bolder","size":"Medium"},
+          {"type":"TextBlock","text":"Can we fill this order?","spacing":"None"},
+          {"type":"FactSet","facts":[
+            {"title":"Part","value":"@{triggerBody()?['StockCode']}"},
+            {"title":"Requested","value":"@{triggerBody()?['RequestedQty']} units by @{formatDateTime(triggerBody()?['RequestedDate'],'MMM d')}"},
+            {"title":"Warehouse","value":"@{triggerBody()?['CustomerWarehouse']}"},
+            {"title":"FG Available","value":"@{outputs('Compose_CanFill')} (@{first(body('Query_FG_Availability')?['results']?[0]?['tables']?[0]?['rows'])?['[FGAvail]']} units)"},
+            {"title":"Recommended ship","value":"@{outputs('Compose_TruckDate')}"},
+            {"title":"Priority","value":"@{triggerBody()?['Priority']}"},
+            {"title":"Notes","value":"@{triggerBody()?['Notes']}"}
+          ]}
+        ],
+        "actions": [
+          {"type":"Action.Submit","title":"✅ Confirm","data":{"action":"confirm"}},
+          {"type":"Action.Submit","title":"❌ Cannot Fulfill","data":{"action":"deny"}}
+        ],
+        "$schema":"http://adaptivecards.io/schemas/adaptive-card.json",
+        "version":"1.4"
+      }
+    },
+    {
+      "id": "9",
+      "name": "Switch_On_Response",
+      "type": "Control.Switch",
+      "expression": "@body('Post_Approval_Card_And_Wait')?['data']?['action']",
+      "cases": {
+        "confirm": [
+          {
+            "name": "Post_Tonya_Task",
+            "type": "Teams.PostMessage",
+            "recipient": "tsledge@millsproducts.com",
+            "message": "@{concat('**SYSPRO Entry needed** — Inquiry #',triggerBody()?['ID'],'\\n\\n- Part: **',triggerBody()?['StockCode'],'**\\n- Qty: **',triggerBody()?['RequestedQty'],' units**\\n- Ship date: **',outputs('Compose_TruckDate'),'**\\n- Ship to: **',triggerBody()?['CustomerWarehouse'],'**\\n\\nPlease key into SYSPRO SO and mark SYSPROEntered=Yes in SZW_InquiryQueue when done.')}"
+          },
+          {
+            "name": "Update_Confirmed",
+            "type": "SharePoint.UpdateItem",
+            "list": "SZW_InquiryQueue",
+            "id": "@triggerBody()?['ID']",
+            "fields": {
+              "Status": "Confirmed",
+              "ConfirmedBy": "@body('Post_Approval_Card_And_Wait')?['responder']?['id']"
+            }
+          },
+          {
+            "name": "Notify_Requestor_Confirmed",
+            "type": "Teams.PostMessage",
+            "recipient": "@triggerBody()?['RequestorName']?['Email']",
+            "message": "@{concat('Your shipment inquiry #',triggerBody()?['ID'],' for ',triggerBody()?['RequestedQty'],' units of **',triggerBody()?['StockCode'],'** has been confirmed. Recommended ship date: **',outputs('Compose_TruckDate'),'** to ',triggerBody()?['CustomerWarehouse'],'. Tonya will key into SYSPRO.')}"
+          }
+        ],
+        "deny": [
+          {
+            "name": "Update_Cannot_Fulfill",
+            "type": "SharePoint.UpdateItem",
+            "list": "SZW_InquiryQueue",
+            "id": "@triggerBody()?['ID']",
+            "fields": {
+              "Status": "Cannot Fulfill"
+            }
+          },
+          {
+            "name": "Notify_Requestor_Denied",
+            "type": "Office365Outlook.SendEmailV2",
+            "to": "@triggerBody()?['RequestorName']?['Email']",
+            "subject": "@{concat('[SZW] Inquiry #',triggerBody()?['ID'],' — Cannot Fulfill')}",
+            "body": "@{concat('Unfortunately, inquiry #',triggerBody()?['ID'],' for ',triggerBody()?['RequestedQty'],' units of ',triggerBody()?['StockCode'],' cannot be fulfilled. FG available: ',first(body('Query_FG_Availability')?['results']?[0]?['tables']?[0]?['rows'])?['[FGAvail]'],' units (short by ',first(body('Query_FG_Availability')?['results']?[0]?['tables']?[0]?['rows'])?['[ShortQty]'],').<br>Contact Celia Nixon or Juan Zacarias to adjust the plan.')}"
+          }
+        ]
+      },
+      "timeout": [
+        {
+          "name": "Notify_Daniel_Timeout",
+          "type": "Office365Outlook.SendEmailV2",
+          "to": "dgutierrez@millsproducts.com",
+          "subject": "[SZW] Inquiry #@{triggerBody()?['ID']} approval timed out after 4 hours",
+          "body": "No response from Celia or JC. Please follow up."
+        }
+      ]
+    },
+    {
+      "id": "10",
+      "name": "Create_RunLog",
+      "type": "SharePoint.CreateItem",
+      "list": "SZW_RunLog",
+      "fields": {
+        "Title": "@{concat('F6-',triggerBody()?['ID'],'-',formatDateTime(utcNow(),'yyyyMMdd-HHmm'))}",
+        "Flow": "F6",
+        "StartedAt": "@utcNow()",
+        "Status": "@body('Switch_On_Response')?['selectedCase']",
+        "Notes": "@{concat('InquiryID=',triggerBody()?['ID'],' StockCode=',triggerBody()?['StockCode'],' Qty=',triggerBody()?['RequestedQty'])}"
+      }
+    }
+  ],
+  "connectors": ["SharePoint", "PowerBI", "Teams", "Office365Outlook"],
+  "sharePointLists": ["SZW_InquiryQueue", "SZW_RunLog"],
+  "constraints": [
+    "Read-only on SYSPRO — Tonya manually keys SO/schedule",
+    "Standard connectors only — no premium plan required",
+    "Teams adaptive card approval uses Flow Bot channel; Celia and JC must have Teams access"
+  ]
+}

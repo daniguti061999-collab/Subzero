@@ -1,0 +1,113 @@
+{
+  "id": "F0",
+  "name": "SZW - F0 PO Intake",
+  "description": "Receives the Sub-Zero open-PO email, saves the attachment to SharePoint, triggers a Power BI refresh, and posts confirmation to Teams.",
+  "trigger": {
+    "type": "Office365Outlook.OnNewEmail.V3",
+    "config": {
+      "folderPath": "Inbox",
+      "includeAttachments": true,
+      "subjectFilter": "Open Purchase Orders"
+    },
+    "triggerCondition": "@or(contains(toLower(triggerOutputs()?['body/from']),'twilcox@'),contains(toLower(triggerOutputs()?['body/from']),'tsledge@'),contains(toLower(triggerOutputs()?['body/from']),'subzero.com'))"
+  },
+  "steps": [
+    {
+      "id": "1",
+      "name": "Filter_Attachments",
+      "type": "Data.FilterArray",
+      "input": "@triggerOutputs()?['body/attachments']",
+      "condition": "@or(endsWith(toLower(item()?['name']),'.xlsx'),endsWith(toLower(item()?['name']),'.csv'))"
+    },
+    {
+      "id": "2",
+      "name": "Condition_NoAttachment",
+      "type": "Control.Condition",
+      "condition": "@empty(outputs('Filter_Attachments')?['body'])",
+      "yes": ["Post D1 Teams message: 'Sub-Zero email had no spreadsheet attached. No action taken.'", "Terminate"],
+      "no": ["continue"]
+    },
+    {
+      "id": "3",
+      "name": "Get_Recent_Uploads",
+      "type": "SharePoint.GetItems",
+      "site": "{{SHAREPOINT_SITE_URL}}",
+      "library": "Shared Documents",
+      "folder": "SZW_Agent/Incoming/SubZeroOpenPO",
+      "filterQuery": "Created ge '@{addMinutes(utcNow(),-30)}'"
+    },
+    {
+      "id": "4",
+      "name": "Apply_Each_Sheet",
+      "type": "Control.ForEach",
+      "items": "@outputs('Filter_Attachments')?['body']",
+      "steps": [
+        {
+          "name": "Create_File",
+          "type": "SharePoint.CreateFile",
+          "site": "{{SHAREPOINT_SITE_URL}}",
+          "library": "Shared Documents",
+          "folderPath": "SZW_Agent/Incoming/SubZeroOpenPO",
+          "fileName": "@{concat('SubZeroOpenPO_', formatDateTime(convertFromUtc(triggerOutputs()?['body/receivedDateTime'],'Eastern Standard Time'),'yyyy-MM-dd_HHmm'),'_',items()?['name'])}",
+          "fileContent": "@base64ToBinary(items()?['contentBytes'])"
+        }
+      ]
+    },
+    {
+      "id": "5",
+      "name": "Condition_FirstFileThisWindow",
+      "type": "Control.Condition",
+      "condition": "@empty(body('Get_Recent_Uploads')?['value'])",
+      "yes": [
+        {
+          "name": "Refresh_PBI_Dataset",
+          "type": "PowerBI.RefreshDataset",
+          "workspaceId": "{{PBI_WORKSPACE_ID}}",
+          "datasetId": "{{PBI_DATASET_ID}}",
+          "note": "SZW Backlog Monitor dataset in AthensDistribution workspace"
+        }
+      ],
+      "no": ["skip — refresh already running from an earlier email this window"]
+    },
+    {
+      "id": "6",
+      "name": "Create_RunLog_Item",
+      "type": "SharePoint.CreateItem",
+      "site": "{{SHAREPOINT_SITE_URL}}",
+      "list": "SZW_RunLog",
+      "fields": {
+        "Title": "@{concat('F0-',formatDateTime(utcNow(),'yyyyMMdd-HHmm'))}",
+        "Flow": "F0",
+        "StartedAt": "@utcNow()",
+        "Status": "Received",
+        "Rows": "@{length(outputs('Filter_Attachments')?['body'])}",
+        "Notes": "@{concat('From: ',triggerOutputs()?['body/from'],' | File count: ',length(outputs('Filter_Attachments')?['body']))}"
+      }
+    },
+    {
+      "id": "7",
+      "name": "Post_Teams_Confirmation",
+      "type": "Teams.PostMessage",
+      "channelId": "{{TEAMS_CHANNEL_SZW_ALERTS}}",
+      "message": "@{concat('📦 Sub-Zero open PO list received ', formatDateTime(convertFromUtc(triggerOutputs()?['body/receivedDateTime'],'Eastern Standard Time'),'ddd MMM d h:mm tt'), ' from ', triggerOutputs()?['body/from'], '. Backlog refresh started.')}"
+    }
+  ],
+  "errorHandling": {
+    "scope": "Try",
+    "catch": {
+      "action": "Send_Email_On_Failure",
+      "type": "Office365Outlook.SendEmailV2",
+      "to": "dgutierrez@millsproducts.com",
+      "subject": "[SZW] F0 Intake failed",
+      "body": "@{concat('Flow run: ', workflow()?['run']?['id'], '<br>Error: ', result('Try')?[0]?['error']?['message'])}"
+    }
+  },
+  "retryPolicy": {
+    "type": "exponential",
+    "count": 3,
+    "interval": "PT30S"
+  },
+  "connectors": ["Office365Outlook", "SharePoint", "PowerBI", "Teams"],
+  "sharePointLists": ["SZW_RunLog"],
+  "sharePointLibraries": ["SZW_Agent/Incoming/SubZeroOpenPO"]
+}

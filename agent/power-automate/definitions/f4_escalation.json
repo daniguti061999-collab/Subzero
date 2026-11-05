@@ -1,0 +1,125 @@
+{
+  "id": "F4",
+  "name": "SZW - F4 Escalation",
+  "description": "Runs every 30 minutes Mon–Fri 6 AM–6 PM ET. Escalates exceptions that have been open beyond their EscalateAfterHours without a recovery plan.",
+  "trigger": {
+    "type": "Recurrence",
+    "config": {
+      "frequency": "Minute",
+      "interval": 30,
+      "schedule": {
+        "weekDays": ["Monday","Tuesday","Wednesday","Thursday","Friday"],
+        "startTime": "06:00",
+        "endTime": "18:00"
+      },
+      "timeZone": "Eastern Standard Time"
+    }
+  },
+  "steps": [
+    {
+      "id": "1",
+      "name": "Get_Routing",
+      "type": "SharePoint.GetItems",
+      "site": "{{SHAREPOINT_SITE_URL}}",
+      "list": "SZW_Routing",
+      "top": 100
+    },
+    {
+      "id": "2",
+      "name": "Get_Open_No_Plan",
+      "type": "SharePoint.GetItems",
+      "site": "{{SHAREPOINT_SITE_URL}}",
+      "list": "SZW_Exceptions",
+      "filterQuery": "(Status eq 'New' or Status eq 'Acknowledged') and RecoveryPlan eq null",
+      "top": 500
+    },
+    {
+      "id": "3",
+      "name": "Apply_Each_Escalation",
+      "type": "Control.ForEach",
+      "items": "@body('Get_Open_No_Plan')?['value']",
+      "concurrencyControl": 1,
+      "steps": [
+        {
+          "name": "Compose_HoursOpen",
+          "value": "@div(sub(ticks(utcNow()),ticks(item()?['LastNotified'])),36000000000)"
+        },
+        {
+          "name": "Filter_Route",
+          "type": "Data.FilterArray",
+          "input": "@body('Get_Routing')?['value']",
+          "condition": "@equals(item()?['RuleID'], items('Apply_Each_Escalation')?['RuleID'])"
+        },
+        {
+          "name": "Condition_ShouldEscalate",
+          "type": "Control.Condition",
+          "condition": "@greater(outputs('Compose_HoursOpen'), float(first(body('Filter_Route')?['body'])?['EscalateAfterHours']))",
+          "yes": [
+            {
+              "name": "Post_Escalation_Card",
+              "type": "Teams.PostAdaptiveCard",
+              "note": "Post to EscalateEmails from SZW_Routing matching item RuleID",
+              "cardBody": {
+                "type": "AdaptiveCard",
+                "body": [
+                  {"type":"TextBlock","text":"⚠️ Escalation: @{items('Apply_Each_Escalation')?['RuleID']} open @{outputs('Compose_HoursOpen')} hours","weight":"Bolder","color":"Attention"},
+                  {"type":"FactSet","facts":[
+                    {"title":"Part","value":"@{items('Apply_Each_Escalation')?['StockCode']}"},
+                    {"title":"PO","value":"@{items('Apply_Each_Escalation')?['CustomerPoNumber']}"},
+                    {"title":"Ship date","value":"@{items('Apply_Each_Escalation')?['ReqShipDate']}"},
+                    {"title":"Short qty","value":"@{items('Apply_Each_Escalation')?['ShortQty']}"},
+                    {"title":"No recovery plan","value":"Action required"}
+                  ]}
+                ],
+                "$schema":"http://adaptivecards.io/schemas/adaptive-card.json",
+                "version":"1.4"
+              }
+            },
+            {
+              "name": "Update_Escalation_Level",
+              "type": "SharePoint.UpdateItem",
+              "list": "SZW_Exceptions",
+              "id": "@items('Apply_Each_Escalation')?['ID']",
+              "fields": {
+                "EscalationLevel": "@add(items('Apply_Each_Escalation')?['EscalationLevel'],1)",
+                "LastNotified": "@utcNow()"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "4",
+      "name": "R5_24hr_Critical_to_Matt",
+      "type": "Control.Scope",
+      "note": "Any Critical or Past Due item open > 24 h with no RecoveryPlan escalates to Matt McMillin",
+      "steps": [
+        {
+          "name": "Filter_R5",
+          "type": "Data.FilterArray",
+          "input": "@body('Get_Open_No_Plan')?['value']",
+          "condition": "@and(or(equals(item()?['RuleID'],'R2'),equals(item()?['RuleID'],'R3')),greater(div(sub(ticks(utcNow()),ticks(item()?['FirstSeen'])),36000000000),24))"
+        },
+        {
+          "name": "Condition_AnyR5",
+          "condition": "@greater(length(body('Filter_R5')?['body']),0)",
+          "yes": [
+            {
+              "name": "Post_R5_Card_To_Matt",
+              "type": "Teams.PostAdaptiveCard",
+              "recipient": "mmcmillin@millsproducts.com",
+              "cardBody": {
+                "type": "AdaptiveCard",
+                "body": [
+                  {"type":"TextBlock","text":"🔴 R5 — @{length(body('Filter_R5')?['body'])} Critical/Past-Due line(s) open > 24 h with no recovery plan","weight":"Bolder","color":"Attention"}
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "connectors": ["Recurrence", "SharePoint", "Teams"]
+}

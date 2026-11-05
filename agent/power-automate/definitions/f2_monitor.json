@@ -1,0 +1,219 @@
+{
+  "id": "F2",
+  "name": "SZW - F2 Monitor",
+  "description": "Runs every hour Mon–Fri 6 AM–6 PM ET. Queries PBI for exceptions, compares against SharePoint, posts Teams alerts for new/worsened lines, auto-clears resolved ones.",
+  "trigger": {
+    "type": "Recurrence",
+    "config": {
+      "frequency": "Week",
+      "interval": 1,
+      "schedule": {
+        "hours": ["6","7","8","9","10","11","12","13","14","15","16","17","18"],
+        "minutes": ["15"],
+        "weekDays": ["Monday","Tuesday","Wednesday","Thursday","Friday"]
+      },
+      "timeZone": "Eastern Standard Time"
+    }
+  },
+  "steps": [
+    {
+      "id": "1",
+      "name": "Query_RunInfo",
+      "type": "PowerBI.RunQueryAgainstDataset",
+      "workspaceId": "{{PBI_WORKSPACE_ID}}",
+      "datasetId": "{{PBI_DATASET_ID}}",
+      "dax": "EVALUATE RunInfo"
+    },
+    {
+      "id": "2",
+      "name": "Condition_Stale",
+      "type": "Control.Condition",
+      "condition": "@greater(div(sub(ticks(utcNow()),ticks(body('Query_RunInfo')?['results']?[0]?['tables']?[0]?['rows']?[0]?['[RefreshedAt]'])),600000000),90)",
+      "yes": [
+        "Post D1 Teams card: 'PBI data is stale — last refresh was @{...} ago. F2 monitor skipped this run.'",
+        "Create SZW_RunLog item (Status=Stale)",
+        "Terminate (Succeeded)"
+      ],
+      "no": ["continue"]
+    },
+    {
+      "id": "3",
+      "name": "Query_Exceptions",
+      "type": "PowerBI.RunQueryAgainstDataset",
+      "workspaceId": "{{PBI_WORKSPACE_ID}}",
+      "datasetId": "{{PBI_DATASET_ID}}",
+      "dax": "EVALUATE FILTER(SELECTCOLUMNS(Requirements,'ReqKey',Requirements[ReqKey],'StockCode',Requirements[StockCode],'CustomerPoNumber',Requirements[CustomerPoNumber],'ReqShipDate',FORMAT(Requirements[ReqShipDate],'yyyy-mm-dd'),'OpenQty',Requirements[OpenQty],'ShortQty',[Short Qty],'DaysPastDue',[Days Past Due],'Status',Requirements[Status],'RuleID',Requirements[ExceptionRuleID]),[Status] IN {\"Past Due\",\"Critical\",\"At Risk\",\"Shipped Not Credited\",\"Raw Material Risk\"})"
+    },
+    {
+      "id": "4",
+      "name": "Get_Open_Exceptions",
+      "type": "SharePoint.GetItems",
+      "site": "{{SHAREPOINT_SITE_URL}}",
+      "list": "SZW_Exceptions",
+      "filterQuery": "Status ne 'Resolved' and Status ne 'Auto-cleared'",
+      "top": 5000
+    },
+    {
+      "id": "5",
+      "name": "Get_Routing",
+      "type": "SharePoint.GetItems",
+      "site": "{{SHAREPOINT_SITE_URL}}",
+      "list": "SZW_Routing",
+      "top": 100
+    },
+    {
+      "id": "6",
+      "name": "Init_SeenKeys",
+      "type": "Control.InitVariable",
+      "variableName": "SeenKeys",
+      "variableType": "Array",
+      "initialValue": []
+    },
+    {
+      "id": "7",
+      "name": "Apply_Each_Exception",
+      "type": "Control.ForEach",
+      "items": "@body('Query_Exceptions')?['results']?[0]?['tables']?[0]?['rows']",
+      "concurrencyControl": 1,
+      "steps": [
+        {
+          "name": "Compose_Key",
+          "value": "@{concat(item()?['[RuleID]'],'|',item()?['[ReqKey]'],'|',item()?['[ReqShipDate]'])}"
+        },
+        {
+          "name": "Append_Key",
+          "type": "Control.AppendToArrayVariable",
+          "variableName": "SeenKeys",
+          "value": "@outputs('Compose_Key')"
+        },
+        {
+          "name": "Filter_Match",
+          "type": "Data.FilterArray",
+          "input": "@body('Get_Open_Exceptions')?['value']",
+          "condition": "@equals(item()?['ExceptionKey'], outputs('Compose_Key'))"
+        },
+        {
+          "name": "Condition_IsNew",
+          "type": "Control.Condition",
+          "condition": "@empty(body('Filter_Match')?['body'])",
+          "yes": [
+            {
+              "name": "Create_Exception",
+              "type": "SharePoint.CreateItem",
+              "list": "SZW_Exceptions",
+              "fields": {
+                "Title": "@outputs('Compose_Key')",
+                "ExceptionKey": "@outputs('Compose_Key')",
+                "RuleID": "@item()?['[RuleID]']",
+                "StockCode": "@item()?['[StockCode]']",
+                "CustomerPoNumber": "@item()?['[CustomerPoNumber]']",
+                "ReqShipDate": "@item()?['[ReqShipDate]']",
+                "OpenQty": "@item()?['[OpenQty]']",
+                "ShortQty": "@item()?['[ShortQty]']",
+                "DaysPastDue": "@item()?['[DaysPastDue]']",
+                "Status": "New",
+                "FirstSeen": "@utcNow()",
+                "LastSeen": "@utcNow()",
+                "EscalationLevel": 0
+              }
+            },
+            {
+              "name": "Post_Teams_Alert_New",
+              "type": "Teams.PostAdaptiveCard",
+              "channelId": "{{TEAMS_CHANNEL_SZW_ALERTS}}",
+              "note": "Route to NotifyEmails from SZW_Routing matching item()?['[RuleID]']",
+              "cardBody": {
+                "type": "AdaptiveCard",
+                "body": [
+                  {"type":"TextBlock","text":"🚨 New Exception: @{item()?['[RuleID]']}","weight":"Bolder"},
+                  {"type":"FactSet","facts":[
+                    {"title":"Part","value":"@{item()?['[StockCode]']}"},
+                    {"title":"PO","value":"@{item()?['[CustomerPoNumber]']}"},
+                    {"title":"Ship date","value":"@{item()?['[ReqShipDate]']}"},
+                    {"title":"Short qty","value":"@{item()?['[ShortQty]']}"},
+                    {"title":"Days past due","value":"@{item()?['[DaysPastDue]']}"}
+                  ]}
+                ],
+                "$schema":"http://adaptivecards.io/schemas/adaptive-card.json",
+                "version":"1.4"
+              }
+            }
+          ],
+          "no": [
+            {
+              "name": "Update_Exception_LastSeen",
+              "type": "SharePoint.UpdateItem",
+              "list": "SZW_Exceptions",
+              "id": "@first(body('Filter_Match')?['body'])?['ID']",
+              "fields": {
+                "LastSeen": "@utcNow()",
+                "ShortQty": "@item()?['[ShortQty]']",
+                "DaysPastDue": "@item()?['[DaysPastDue]']"
+              }
+            },
+            {
+              "name": "Condition_IsWorse",
+              "note": "Re-alert if ShortQty increased by >20% vs last recorded",
+              "rePostCard": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "8",
+      "name": "Filter_To_Clear",
+      "type": "Data.FilterArray",
+      "input": "@body('Get_Open_Exceptions')?['value']",
+      "condition": "@not(contains(variables('SeenKeys'), item()?['ExceptionKey']))"
+    },
+    {
+      "id": "9",
+      "name": "Apply_Each_Cleared",
+      "type": "Control.ForEach",
+      "items": "@body('Filter_To_Clear')?['body']",
+      "steps": [
+        {
+          "name": "Update_Status_AutoCleared",
+          "type": "SharePoint.UpdateItem",
+          "list": "SZW_Exceptions",
+          "id": "@item()?['ID']",
+          "fields": {
+            "Status": "Auto-cleared",
+            "ClearedAt": "@utcNow()"
+          }
+        }
+      ]
+    },
+    {
+      "id": "10",
+      "name": "Create_RunLog",
+      "type": "SharePoint.CreateItem",
+      "list": "SZW_RunLog",
+      "fields": {
+        "Title": "@{concat('F2-',formatDateTime(utcNow(),'yyyyMMdd-HHmm'))}",
+        "Flow": "F2",
+        "StartedAt": "@utcNow()",
+        "Rows": "@{length(body('Query_Exceptions')?['results']?[0]?['tables']?[0]?['rows'])}",
+        "New": "@{length(filter(body('Apply_Each_Exception'),'@equals(item()?[''action''],''created'')))}",
+        "Cleared": "@{length(body('Filter_To_Clear')?['body'])}",
+        "Status": "Success"
+      }
+    }
+  ],
+  "errorHandling": {
+    "scope": "Try",
+    "catch": {
+      "action": "Email_Daniel",
+      "subject": "[SZW] F2 Monitor failed",
+      "note": "Include workflow run URL and error message"
+    }
+  },
+  "retryPolicy": {
+    "type": "exponential",
+    "count": 3,
+    "interval": "PT30S",
+    "applies_to": ["PowerBI.RunQueryAgainstDataset","SharePoint.GetItems","SharePoint.CreateItem","SharePoint.UpdateItem"]
+  },
+  "connectors": ["Recurrence", "PowerBI", "SharePoint", "Teams"]
+}

@@ -1,0 +1,123 @@
+{
+  "id": "F5",
+  "name": "SZW - F5 Watchdog",
+  "description": "Runs every 2 hours 24/7. Monitors F2 health and data freshness. Emails Daniel if F2 missed a run, PBI data is stale, or two consecutive F2 runs errored. Also checks whether the Sub-Zero open PO file is overdue.",
+  "trigger": {
+    "type": "Recurrence",
+    "config": {
+      "frequency": "Hour",
+      "interval": 2
+    }
+  },
+  "steps": [
+    {
+      "id": "1",
+      "name": "Get_Config",
+      "type": "SharePoint.GetItems",
+      "site": "{{SHAREPOINT_SITE_URL}}",
+      "list": "SZW_Config",
+      "filterQuery": "Key eq 'OpenPOMaxAgeHours' or Key eq 'BusinessHoursStart' or Key eq 'BusinessHoursEnd'",
+      "top": 10
+    },
+    {
+      "id": "2",
+      "name": "Get_Recent_F2_Runs",
+      "type": "SharePoint.GetItems",
+      "site": "{{SHAREPOINT_SITE_URL}}",
+      "list": "SZW_RunLog",
+      "filterQuery": "Flow eq 'F2'",
+      "orderBy": "StartedAt desc",
+      "top": 2
+    },
+    {
+      "id": "3",
+      "name": "Compose_IsBusinessHours",
+      "value": "@and(greaterOrEquals(int(formatDateTime(convertFromUtc(utcNow(),'Eastern Standard Time'),'HH')),6),lessOrEquals(int(formatDateTime(convertFromUtc(utcNow(),'Eastern Standard Time'),'HH')),18),not(equals(dayOfWeek(convertFromUtc(utcNow(),'Eastern Standard Time')),0)),not(equals(dayOfWeek(convertFromUtc(utcNow(),'Eastern Standard Time')),6)))"
+    },
+    {
+      "id": "4",
+      "name": "Condition_F2MissedRun",
+      "type": "Control.Condition",
+      "condition": "@and(outputs('Compose_IsBusinessHours'),or(empty(body('Get_Recent_F2_Runs')?['value']),greater(div(sub(ticks(utcNow()),ticks(first(body('Get_Recent_F2_Runs')?['value'])?['StartedAt'])),36000000000),1.5)))",
+      "yes": [
+        {
+          "name": "Alert_F2_Missed",
+          "type": "Office365Outlook.SendEmailV2",
+          "to": "dgutierrez@millsproducts.com",
+          "subject": "[SZW WATCHDOG] F2 Monitor has not run in >90 minutes",
+          "body": "F2 last ran at @{first(body('Get_Recent_F2_Runs')?['value'])?['StartedAt']}. Please check Power Automate for errors."
+        }
+      ]
+    },
+    {
+      "id": "5",
+      "name": "Condition_TwoConsecutiveErrors",
+      "type": "Control.Condition",
+      "condition": "@and(greater(length(body('Get_Recent_F2_Runs')?['value']),1),equals(first(body('Get_Recent_F2_Runs')?['value'])?['Status'],'Error'),equals(last(body('Get_Recent_F2_Runs')?['value'])?['Status'],'Error'))",
+      "yes": [
+        {
+          "name": "Alert_Consecutive_Errors",
+          "type": "Office365Outlook.SendEmailV2",
+          "to": "dgutierrez@millsproducts.com",
+          "subject": "[SZW WATCHDOG] F2 errored on the last 2 consecutive runs",
+          "body": "Both of the last 2 F2 runs failed. Check Power Automate run history for details."
+        }
+      ]
+    },
+    {
+      "id": "6",
+      "name": "Condition_StalePBIData",
+      "type": "Control.Condition",
+      "note": "Only check during business hours",
+      "condition": "@outputs('Compose_IsBusinessHours')",
+      "yes": [
+        {
+          "name": "Query_RunInfo",
+          "type": "PowerBI.RunQueryAgainstDataset",
+          "workspaceId": "{{PBI_WORKSPACE_ID}}",
+          "datasetId": "{{PBI_DATASET_ID}}",
+          "dax": "EVALUATE RunInfo"
+        },
+        {
+          "name": "Condition_PBIStale",
+          "condition": "@greater(div(sub(ticks(utcNow()),ticks(body('Query_RunInfo')?['results']?[0]?['tables']?[0]?['rows']?[0]?['[RefreshedAt]'])),36000000000),3)",
+          "yes": [
+            {
+              "name": "Alert_PBI_Stale",
+              "type": "Office365Outlook.SendEmailV2",
+              "to": "dgutierrez@millsproducts.com",
+              "subject": "[SZW WATCHDOG] Power BI data has not refreshed in >3 hours",
+              "body": "Last PBI refresh: @{body('Query_RunInfo')?['results']?[0]?['tables']?[0]?['rows']?[0]?['[RefreshedAt]']}. Check the Power BI dataset refresh history."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "7",
+      "name": "Get_Latest_OpenPO_File",
+      "type": "SharePoint.GetFiles",
+      "site": "{{SHAREPOINT_SITE_URL}}",
+      "library": "Shared Documents",
+      "folder": "SZW_Agent/Incoming/SubZeroOpenPO",
+      "orderBy": "TimeLastModified desc",
+      "top": 1
+    },
+    {
+      "id": "8",
+      "name": "Condition_D2_FileMissing",
+      "type": "Control.Condition",
+      "condition": "@and(outputs('Compose_IsBusinessHours'),or(empty(body('Get_Latest_OpenPO_File')?['value']),greater(div(sub(ticks(utcNow()),ticks(first(body('Get_Latest_OpenPO_File')?['value'])?['TimeLastModified'])),36000000000),float(first(filter(body('Get_Config')?['value'],\"@equals(item()?['Key'],'OpenPOMaxAgeHours')\"))?['Value']))))",
+      "yes": [
+        {
+          "name": "Alert_D2_NoFile",
+          "type": "Office365Outlook.SendEmailV2",
+          "to": "twilcox@millsproducts.com;tsledge@millsproducts.com;dgutierrez@millsproducts.com",
+          "subject": "[SZW D2] No Sub-Zero open PO file received since @{first(body('Get_Latest_OpenPO_File')?['value'])?['TimeLastModified']}",
+          "body": "The Sub-Zero open PO subscription email has not been received in the past @{first(filter(body('Get_Config')?['value'],\"@equals(item()?['Key'],'OpenPOMaxAgeHours')\"))?['Value']} hours. Please check the Sub-Zero portal and re-send if needed."
+        }
+      ]
+    }
+  ],
+  "connectors": ["Recurrence", "SharePoint", "PowerBI", "Office365Outlook"]
+}
