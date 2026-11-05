@@ -1,4 +1,4 @@
-expression DataFolder = "C:\SZW_Backlog_Monitor\Data\" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+expression DataFolder = "C:\Users\DGUTIERREZ\OneDrive - Mills Products TN\Desktop\outputs\Subzero\szw-backlog-agent\agent\data_real_2026-10-28\" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
 	annotation PBI_ResultType = Text
 
 expression AsOfOverride = "2026-10-28" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=false]
